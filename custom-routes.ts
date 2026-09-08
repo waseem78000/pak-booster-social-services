@@ -279,55 +279,62 @@ app.get('/admin/deposits', adminMiddleware, async (c) => {
 })
 
 app.post('/admin/deposits/:id/approve', adminMiddleware, async (c) => {
-  const id = c.req.param('id')
-  const adminId = c.get('adminId')
-  const deposit = await prisma.deposit.findUnique({ where: { id } })
-  if (!deposit) return c.json({ error: 'Deposit not found' }, 404)
-  if (deposit.status !== 'pending') return c.json({ error: 'Deposit already processed' }, 400)
+  try {
+    const id = c.req.param('id')
+    const adminId = c.get('adminId')
+    const deposit = await prisma.deposit.findUnique({ where: { id } })
+    if (!deposit) return c.json({ error: 'Deposit not found' }, 404)
+    if (deposit.status !== 'pending') return c.json({ error: 'Deposit already processed' }, 400)
 
-  const result = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.findUnique({ where: { id: deposit.userId } })
-    if (!user) throw new Error('User not found')
-    const prevBalance = user.walletBalance
-    const newBalance = prevBalance + deposit.amount
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: deposit.userId } })
+      if (!user) throw new Error('User not found')
+      const prevBalance = user.walletBalance
+      const newBalance = prevBalance + deposit.amount
 
-    await tx.user.update({ where: { id: deposit.userId }, data: { walletBalance: newBalance } })
-    await tx.deposit.update({ where: { id }, data: { status: 'approved', reviewedBy: adminId, reviewedAt: new Date() } })
-    const txn = await tx.walletTransaction.create({
-      data: {
-        userId: deposit.userId, type: 'credit', amount: deposit.amount,
-        previousBalance, newBalance, description: `Deposit via ${deposit.method}`,
-        depositId: deposit.id, status: 'completed'
-      }
+      await tx.user.update({ where: { id: deposit.userId }, data: { walletBalance: newBalance } })
+      await tx.deposit.update({ where: { id }, data: { status: 'approved', reviewedBy: adminId, reviewedAt: new Date() } })
+      const txn = await tx.walletTransaction.create({
+        data: {
+          userId: deposit.userId, type: 'credit', amount: deposit.amount,
+          previousBalance: prevBalance, newBalance, description: `Deposit via ${deposit.method}`,
+          depositId: deposit.id, status: 'completed'
+        }
+      })
+      await tx.notification.create({
+        data: {
+          userId: deposit.userId, title: 'Deposit Approved',
+          message: `Your Rs. ${deposit.amount} deposit has been approved and credited to your wallet.`,
+          type: 'success'
+        }
+      }).catch(() => {})
+      return { txn, newBalance }
     })
-    await tx.notification.create({
-      data: {
-        userId: deposit.userId, title: 'Deposit Approved',
-        message: `Your Rs. ${deposit.amount} deposit has been approved and credited to your wallet.`,
-        type: 'success'
-      }
-    })
-    return { txn, newBalance }
-  })
-  return c.json({ success: true, newBalance: result.newBalance })
+    return c.json({ success: true, newBalance: result.newBalance })
+  } catch (e: any) {
+    console.error('[Approve Deposit Error]', e)
+    return c.json({ error: String(e?.message || e || 'Failed to approve deposit') }, 500)
+  }
 })
 
 app.post('/admin/deposits/:id/reject', adminMiddleware, async (c) => {
-  const id = c.req.param('id')
-  const adminId = c.get('adminId')
-  const { reason } = await c.req.json().catch(() => ({}))
-  const deposit = await prisma.deposit.findUnique({ where: { id } })
-  if (!deposit) return c.json({ error: 'Deposit not found' }, 404)
-  if (deposit.status !== 'pending') return c.json({ error: 'Deposit already processed' }, 400)
-  await prisma.deposit.update({ where: { id }, data: { status: 'rejected', reviewedBy: adminId, reviewedAt: new Date() } })
-  await prisma.notification.create({
-    data: {
-      userId: deposit.userId, title: 'Deposit Rejected',
-      message: `Your Rs. ${deposit.amount} deposit request has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
-      type: 'error'
-    }
-  })
-  return c.json({ success: true })
+  try {
+    const id = c.req.param('id')
+    const adminId = c.get('adminId')
+    const { reason } = await c.req.json().catch(() => ({}))
+    const deposit = await prisma.deposit.findUnique({ where: { id } })
+    if (!deposit) return c.json({ error: 'Deposit not found' }, 404)
+    if (deposit.status !== 'pending') return c.json({ error: 'Deposit already processed' }, 400)
+    await prisma.deposit.update({ where: { id }, data: { status: 'rejected', reviewedBy: adminId, reviewedAt: new Date() } })
+    await prisma.notification.create({
+      data: {
+        userId: deposit.userId, title: 'Deposit Rejected',
+        message: `Your Rs. ${deposit.amount} deposit request has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
+        type: 'error'
+      }
+    }).catch(() => {})
+    return c.json({ success: true })
+  } catch (e: any) { return c.json({ error: String(e?.message || e || 'Failed to reject deposit') }, 500) }
 })
 
 // --- ORDERS ---
@@ -379,93 +386,99 @@ app.get('/admin/orders', adminMiddleware, async (c) => {
 })
 
 app.post('/admin/orders/:id/start', adminMiddleware, async (c) => {
-  const id = c.req.param('id')
-  const adminId = c.get('adminId')
-  const order = await prisma.order.findUnique({ where: { id } })
-  if (!order) return c.json({ error: 'Order not found' }, 404)
-  if (order.status !== 'pending') return c.json({ error: 'Order already processed' }, 400)
+  try {
+    const id = c.req.param('id')
+    const adminId = c.get('adminId')
+    const order = await prisma.order.findUnique({ where: { id } })
+    if (!order) return c.json({ error: 'Order not found' }, 404)
+    if (order.status !== 'pending') return c.json({ error: 'Order already processed' }, 400)
 
-  const result = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.findUnique({ where: { id: order.userId } })
-    if (!user) throw new Error('User not found')
-    if (user.walletBalance < order.amount) throw new Error('Insufficient wallet balance')
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: order.userId } })
+      if (!user) throw new Error('User not found')
+      if (user.walletBalance < order.amount) throw new Error('Insufficient wallet balance')
 
-    const prevBalance = user.walletBalance
-    const newBalance = prevBalance - order.amount
+      const prevBalance = user.walletBalance
+      const newBalance = prevBalance - order.amount
 
-    await tx.user.update({ where: { id: order.userId }, data: { walletBalance: newBalance } })
-    await tx.order.update({ where: { id }, data: { status: 'processing', approvedBy: adminId } })
-    await tx.walletTransaction.create({
-      data: {
-        userId: order.userId, type: 'debit', amount: order.amount,
-        previousBalance, newBalance, description: `Order #${order.id.slice(-6).toUpperCase()} - ${order.link}`,
-        orderId: order.id, status: 'completed'
-      }
+      await tx.user.update({ where: { id: order.userId }, data: { walletBalance: newBalance } })
+      await tx.order.update({ where: { id }, data: { status: 'processing', approvedBy: adminId } })
+      await tx.walletTransaction.create({
+        data: {
+          userId: order.userId, type: 'debit', amount: order.amount,
+          previousBalance: prevBalance, newBalance, description: `Order #${order.id.slice(-6).toUpperCase()} - ${order.link}`,
+          orderId: order.id, status: 'completed'
+        }
+      })
+      await tx.notification.create({
+        data: {
+          userId: order.userId, title: 'Order Processing',
+          message: `Your order #${order.id.slice(-6).toUpperCase()} has been approved and is now processing.`,
+          type: 'success'
+        }
+      }).catch(() => {})
+      return { newBalance }
     })
-    await tx.notification.create({
-      data: {
-        userId: order.userId, title: 'Order Processing',
-        message: `Your order #${order.id.slice(-6).toUpperCase()} has been approved and is now processing.`,
-        type: 'success'
-      }
-    })
-    return { newBalance }
-  })
-  return c.json({ success: true, newBalance: result.newBalance })
+    return c.json({ success: true, newBalance: result.newBalance })
+  } catch (e: any) { return c.json({ error: String(e?.message || e || 'Failed to start order') }, 500) }
 })
 
 app.post('/admin/orders/:id/complete', adminMiddleware, async (c) => {
-  const id = c.req.param('id')
-  const order = await prisma.order.findUnique({ where: { id } })
-  if (!order) return c.json({ error: 'Order not found' }, 404)
-  if (order.status !== 'processing') return c.json({ error: 'Order must be in processing status' }, 400)
+  try {
+    const id = c.req.param('id')
+    const order = await prisma.order.findUnique({ where: { id } })
+    if (!order) return c.json({ error: 'Order not found' }, 404)
+    if (order.status !== 'processing') return c.json({ error: 'Order must be in processing status' }, 400)
 
-  await prisma.order.update({ where: { id }, data: { status: 'completed', completedAt: new Date() } })
-  await prisma.notification.create({
-    data: {
-      userId: order.userId, title: 'Order Completed',
-      message: `Your order #${order.id.slice(-6).toUpperCase()} has been completed successfully!`,
-      type: 'success'
-    }
-  })
-  return c.json({ success: true })
+    await prisma.order.update({ where: { id }, data: { status: 'completed', completedAt: new Date() } })
+    await prisma.notification.create({
+      data: {
+        userId: order.userId, title: 'Order Completed',
+        message: `Your order #${order.id.slice(-6).toUpperCase()} has been completed successfully!`,
+        type: 'success'
+      }
+    }).catch(() => {})
+    return c.json({ success: true })
+  } catch (e: any) { return c.json({ error: String(e?.message || e || 'Failed to complete order') }, 500) }
 })
 
 app.post('/admin/orders/:id/cancel', adminMiddleware, async (c) => {
-  const id = c.req.param('id')
-  const { refund } = await c.req.json().catch(() => ({ refund: false }))
-  const order = await prisma.order.findUnique({ where: { id } })
-  if (!order) return c.json({ error: 'Order not found' }, 404)
+  try {
+    const id = c.req.param('id')
+    const { refund } = await c.req.json().catch(() => ({ refund: false }))
+    const order = await prisma.order.findUnique({ where: { id } })
+    if (!order) return c.json({ error: 'Order not found' }, 404)
 
-  const result = await prisma.$transaction(async (tx) => {
-    await tx.order.update({ where: { id }, data: { status: 'cancelled' } })
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.order.update({ where: { id }, data: { status: 'cancelled' } })
 
-    if (refund && order.status === 'processing') {
-      const user = await tx.user.findUnique({ where: { id: order.userId } })
-      if (user) {
-        const prevBalance = user.walletBalance
-        const newBalance = prevBalance + order.amount
-        await tx.user.update({ where: { id: order.userId }, data: { walletBalance: newBalance } })
-        await tx.walletTransaction.create({
-          data: {
-            userId: order.userId, type: 'credit', amount: order.amount,
-            previousBalance, newBalance, description: `Refund - Order #${order.id.slice(-6).toUpperCase()}`,
-            orderId: order.id, status: 'completed'
-          }
-        })
+      if (refund && order.status === 'processing') {
+        const user = await tx.user.findUnique({ where: { id: order.userId } })
+        if (user) {
+          const prevBalance = user.walletBalance
+          const newBalance = prevBalance + order.amount
+          await tx.user.update({ where: { id: order.userId }, data: { walletBalance: newBalance } })
+          await tx.walletTransaction.create({
+            data: {
+              userId: order.userId, type: 'credit', amount: order.amount,
+              previousBalance: prevBalance, newBalance, description: `Refund - Order #${order.id.slice(-6).toUpperCase()}`,
+              orderId: order.id, status: 'completed'
+            }
+          })
+        }
       }
-    }
 
-    await tx.notification.create({
-      data: {
-        userId: order.userId, title: 'Order Cancelled',
-        message: `Your order #${order.id.slice(-6).toUpperCase()} has been cancelled.${refund ? ' A refund has been processed.' : ''}`,
-        type: 'error'
-      }
+      await tx.notification.create({
+        data: {
+          userId: order.userId, title: 'Order Cancelled',
+          message: `Your order #${order.id.slice(-6).toUpperCase()} has been cancelled.${refund ? ' A refund has been processed.' : ''}`,
+          type: 'error'
+        }
+      }).catch(() => {})
+      return true
     })
-    return true
-  })
-  return c.json({ success: true })
+    return c.json({ success: true })
+  } catch (e: any) { return c.json({ error: String(e?.message || e || 'Failed to cancel order') }, 500) }
 })
 
 // --- WALLET TRANSACTIONS ---

@@ -17,35 +17,98 @@ app.get('/health', (c) => {
 // --- AUTO-SEED (runs once on startup) ---
 const seedOnce = async () => {
   try {
-    const existing = await prisma.adminUser.findFirst()
-    if (existing) return
-    console.log('🌱 Seeding default admin...')
-    const adminHash = await bcrypt.hash('admin123', 12)
-    await prisma.adminUser.create({
-      data: { username: 'admin', email: 'admin@smmpanel.com', passwordHash: adminHash, role: 'superadmin' }
-    })
-    await prisma.paymentSettings.create({ data: {} })
-    const services = [
-      { name: 'Instagram Followers', category: 'Instagram', description: 'Real Instagram followers', price: 0.5, minQuantity: 100, maxQuantity: 100000, avgStartTime: '1-2 hours', speed: '1000/day' },
-      { name: 'Instagram Likes', category: 'Instagram', description: 'High quality Instagram likes', price: 0.3, minQuantity: 50, maxQuantity: 50000, avgStartTime: '30 min', speed: '5000/day' },
-      { name: 'Instagram Views', category: 'Instagram', description: 'Instagram reel/story views', price: 0.1, minQuantity: 100, maxQuantity: 1000000, avgStartTime: '15 min', speed: '50000/day' },
-      { name: 'YouTube Subscribers', category: 'YouTube', description: 'Real YouTube subscribers', price: 5.0, minQuantity: 100, maxQuantity: 50000, avgStartTime: '24 hours', speed: '500/day' },
-      { name: 'YouTube Views', category: 'YouTube', description: 'YouTube video views', price: 0.5, minQuantity: 500, maxQuantity: 1000000, avgStartTime: '1 hour', speed: '10000/day' },
-      { name: 'YouTube Likes', category: 'YouTube', description: 'YouTube video likes', price: 1.0, minQuantity: 50, maxQuantity: 100000, avgStartTime: '2 hours', speed: '2000/day' },
-      { name: 'TikTok Followers', category: 'TikTok', description: 'Real TikTok followers', price: 1.0, minQuantity: 100, maxQuantity: 100000, avgStartTime: '12 hours', speed: '1000/day' },
-      { name: 'TikTok Likes', category: 'TikTok', description: 'TikTok video likes', price: 0.5, minQuantity: 100, maxQuantity: 500000, avgStartTime: '1 hour', speed: '10000/day' },
-      { name: 'Facebook Page Likes', category: 'Facebook', description: 'Real Facebook page likes', price: 2.0, minQuantity: 100, maxQuantity: 100000, avgStartTime: '24 hours', speed: '500/day' },
-      { name: 'Twitter Followers', category: 'Twitter/X', description: 'Twitter/X followers', price: 1.5, minQuantity: 100, maxQuantity: 50000, avgStartTime: '12 hours', speed: '500/day' },
-      { name: 'Telegram Members', category: 'Telegram', description: 'Telegram group/channel members', price: 1.0, minQuantity: 100, maxQuantity: 100000, avgStartTime: '6 hours', speed: '1000/day' },
-    ]
-    for (const s of services) await prisma.service.create({ data: s })
-    const plans = [
-      { name: 'YouTube Growth', platform: 'YouTube', description: 'Complete YouTube growth package', price: 1000, duration: 30, views: 10000, subscribers: 500, features: 'Views, Subscribers, Likes' },
-      { name: 'Instagram Boost', platform: 'Instagram', description: 'Instagram growth package', price: 500, duration: 30, views: 0, subscribers: 1000, features: 'Followers, Likes' },
-      { name: 'TikTok Starter', platform: 'TikTok', description: 'TikTok growth package', price: 750, duration: 30, views: 50000, subscribers: 200, features: 'Views, Followers, Likes' },
-    ]
-    for (const p of plans) await prisma.plan.create({ data: p })
-    console.log('✅ Seeded admin (admin/admin123) + services + plans')
+    const existingAdmin = await prisma.adminUser.findFirst()
+    if (!existingAdmin) {
+      console.log('🌱 Seeding default admin...')
+      const adminHash = await bcrypt.hash('admin123', 12)
+      await prisma.adminUser.create({
+        data: { username: 'admin', email: 'admin@smmpanel.com', passwordHash: adminHash, role: 'superadmin' }
+      })
+      await prisma.paymentSettings.create({ data: {} })
+    }
+    const serviceCount = await prisma.service.count()
+    if (serviceCount < 10) {
+      console.log('🌱 Seeding services...')
+      const svcs = [
+        { name: 'Instagram Followers [Real]', category: 'Instagram', description: 'Real Instagram followers with profile picture & posts. HQ accounts. No refill.', price: 120, minQuantity: 100, maxQuantity: 100000, avgStartTime: '1 hour', speed: '5000/day' },
+        { name: 'Instagram Followers [Cheapest]', category: 'Instagram', description: 'Budget Instagram followers. No refill.', price: 50, minQuantity: 100, maxQuantity: 500000, avgStartTime: '6 hours', speed: '10000/day' },
+        { name: 'Instagram Likes [HQ Profile]', category: 'Instagram', description: 'Instagram post likes from HQ profiles. Instant start.', price: 60, minQuantity: 50, maxQuantity: 500000, avgStartTime: '10 minutes', speed: '20000/day' },
+        { name: 'Instagram Likes [Cheapest]', category: 'Instagram', description: 'Budget Instagram likes. Mixed quality.', price: 25, minQuantity: 50, maxQuantity: 1000000, avgStartTime: '1 hour', speed: '50000/day' },
+        { name: 'Instagram Views [Reel/Video]', category: 'Instagram', description: 'Instagram reel/video views. Real views. Instant start.', price: 15, minQuantity: 100, maxQuantity: 10000000, avgStartTime: '5 minutes', speed: '100000/day' },
+        { name: 'Instagram Views [Story]', category: 'Instagram', description: 'Instagram story views from real accounts.', price: 20, minQuantity: 100, maxQuantity: 1000000, avgStartTime: '10 minutes', speed: '50000/day' },
+        { name: 'Instagram Comments [Custom]', category: 'Instagram', description: 'Custom Instagram comments. Write your own.', price: 500, minQuantity: 10, maxQuantity: 5000, avgStartTime: '2 hours', speed: '200/day' },
+        { name: 'Instagram Saves', category: 'Instagram', description: 'Instagram post saves. Algorithm boost.', price: 80, minQuantity: 50, maxQuantity: 100000, avgStartTime: '1 hour', speed: '5000/day' },
+        { name: 'Instagram Shares', category: 'Instagram', description: 'Instagram post shares.', price: 80, minQuantity: 50, maxQuantity: 100000, avgStartTime: '1 hour', speed: '5000/day' },
+        { name: 'TikTok Likes [HQ Profile] [Fast]', category: 'TikTok', description: 'TikTok likes from HQ profiles. No refill. Super instant.', price: 90, minQuantity: 100, maxQuantity: 1000000, avgStartTime: '10 minutes', speed: '100000/day' },
+        { name: 'TikTok Likes [Cheapest]', category: 'TikTok', description: 'Budget TikTok likes. No refill.', price: 35, minQuantity: 100, maxQuantity: 2000000, avgStartTime: '1 hour', speed: '50000/day' },
+        { name: 'TikTok Followers [HQ]', category: 'TikTok', description: 'TikTok followers HQ. 30-day refill.', price: 150, minQuantity: 100, maxQuantity: 500000, avgStartTime: '12 hours', speed: '5000/day' },
+        { name: 'TikTok Followers [Cheapest]', category: 'TikTok', description: 'Budget TikTok followers. No refill.', price: 60, minQuantity: 100, maxQuantity: 1000000, avgStartTime: '24 hours', speed: '10000/day' },
+        { name: 'TikTok Views [Real]', category: 'TikTok', description: 'TikTok views from real accounts.', price: 15, minQuantity: 500, maxQuantity: 50000000, avgStartTime: '5 minutes', speed: '500000/day' },
+        { name: 'TikTok Views [Cheapest]', category: 'TikTok', description: 'Budget TikTok views.', price: 5, minQuantity: 1000, maxQuantity: 100000000, avgStartTime: '1 hour', speed: '1000000/day' },
+        { name: 'TikTok Comments [Custom]', category: 'TikTok', description: 'Custom TikTok comments.', price: 400, minQuantity: 10, maxQuantity: 5000, avgStartTime: '2 hours', speed: '200/day' },
+        { name: 'TikTok Shares', category: 'TikTok', description: 'TikTok video shares.', price: 100, minQuantity: 100, maxQuantity: 100000, avgStartTime: '1 hour', speed: '5000/day' },
+        { name: 'TikTok Likes + Views [HQ]', category: 'TikTok', description: 'TikTok likes + views combo. HQ accounts.', price: 89, minQuantity: 100, maxQuantity: 1000000, avgStartTime: '10 minutes', speed: '50000/day' },
+        { name: 'YouTube Subscribers [Real]', category: 'YouTube', description: 'Real subscribers. 30-day drop guarantee.', price: 300, minQuantity: 100, maxQuantity: 100000, avgStartTime: '24 hours', speed: '2000/day' },
+        { name: 'YouTube Subscribers [Cheapest]', category: 'YouTube', description: 'Budget YouTube subscribers.', price: 100, minQuantity: 100, maxQuantity: 500000, avgStartTime: '48 hours', speed: '5000/day' },
+        { name: 'YouTube Views [Monetizable]', category: 'YouTube', description: 'YouTube views with retention. Monetizable.', price: 200, minQuantity: 500, maxQuantity: 10000000, avgStartTime: '1 hour', speed: '100000/day' },
+        { name: 'YouTube Views [Cheapest]', category: 'YouTube', description: 'Budget YouTube views.', price: 50, minQuantity: 500, maxQuantity: 50000000, avgStartTime: '30 minutes', speed: '500000/day' },
+        { name: 'YouTube Likes', category: 'YouTube', description: 'YouTube video likes. No refill.', price: 150, minQuantity: 50, maxQuantity: 500000, avgStartTime: '1 hour', speed: '10000/day' },
+        { name: 'YouTube Likes [Cheapest]', category: 'YouTube', description: 'Budget YouTube likes.', price: 60, minQuantity: 50, maxQuantity: 1000000, avgStartTime: '6 hours', speed: '20000/day' },
+        { name: 'YouTube Dislikes', category: 'YouTube', description: 'YouTube video dislikes.', price: 200, minQuantity: 10, maxQuantity: 50000, avgStartTime: '2 hours', speed: '2000/day' },
+        { name: 'YouTube Watch Hours [Monetization]', category: 'YouTube', description: 'YouTube watch hours for monetization.', price: 5000, minQuantity: 1000, maxQuantity: 5000, avgStartTime: '48 hours', speed: '100 hours/day' },
+        { name: 'Facebook Page Likes', category: 'Facebook', description: 'Real Facebook page likes. 30-day refill.', price: 200, minQuantity: 100, maxQuantity: 500000, avgStartTime: '24 hours', speed: '5000/day' },
+        { name: 'Facebook Page Likes [Cheapest]', category: 'Facebook', description: 'Budget Facebook page likes.', price: 80, minQuantity: 100, maxQuantity: 1000000, avgStartTime: '48 hours', speed: '10000/day' },
+        { name: 'Facebook Post Likes', category: 'Facebook', description: 'Facebook post likes.', price: 50, minQuantity: 50, maxQuantity: 500000, avgStartTime: '1 hour', speed: '10000/day' },
+        { name: 'Facebook Followers', category: 'Facebook', description: 'Facebook profile/page followers.', price: 150, minQuantity: 100, maxQuantity: 500000, avgStartTime: '24 hours', speed: '3000/day' },
+        { name: 'Facebook Video Views', category: 'Facebook', description: 'Facebook video views.', price: 30, minQuantity: 500, maxQuantity: 10000000, avgStartTime: '30 minutes', speed: '100000/day' },
+        { name: 'Facebook Post Shares', category: 'Facebook', description: 'Facebook post shares.', price: 100, minQuantity: 50, maxQuantity: 100000, avgStartTime: '2 hours', speed: '3000/day' },
+        { name: 'Telegram Members', category: 'Telegram', description: 'Telegram channel/group members.', price: 80, minQuantity: 100, maxQuantity: 500000, avgStartTime: '6 hours', speed: '10000/day' },
+        { name: 'Telegram Members [Cheapest]', category: 'Telegram', description: 'Budget Telegram members.', price: 40, minQuantity: 100, maxQuantity: 1000000, avgStartTime: '12 hours', speed: '20000/day' },
+        { name: 'Telegram Post Views', category: 'Telegram', description: 'Telegram channel post views.', price: 15, minQuantity: 100, maxQuantity: 1000000, avgStartTime: '10 minutes', speed: '50000/day' },
+        { name: 'Telegram Channel Subscribers', category: 'Telegram', description: 'Telegram channel subscribers. HQ.', price: 120, minQuantity: 100, maxQuantity: 200000, avgStartTime: '6 hours', speed: '5000/day' },
+        { name: 'Telegram Post Reactions', category: 'Telegram', description: 'Telegram post reactions.', price: 50, minQuantity: 50, maxQuantity: 100000, avgStartTime: '1 hour', speed: '5000/day' },
+        { name: 'Twitter/X Followers [Real]', category: 'Twitter/X', description: 'Twitter followers HQ. 30-day refill.', price: 200, minQuantity: 100, maxQuantity: 100000, avgStartTime: '24 hours', speed: '3000/day' },
+        { name: 'Twitter/X Followers [Cheapest]', category: 'Twitter/X', description: 'Budget Twitter followers.', price: 80, minQuantity: 100, maxQuantity: 500000, avgStartTime: '48 hours', speed: '10000/day' },
+        { name: 'Twitter/X Likes', category: 'Twitter/X', description: 'Twitter tweet likes. HQ profiles.', price: 100, minQuantity: 50, maxQuantity: 500000, avgStartTime: '1 hour', speed: '10000/day' },
+        { name: 'Twitter/X Retweets', category: 'Twitter/X', description: 'Twitter retweets.', price: 150, minQuantity: 50, maxQuantity: 200000, avgStartTime: '2 hours', speed: '5000/day' },
+        { name: 'Twitter/X Views', category: 'Twitter/X', description: 'Twitter tweet views.', price: 20, minQuantity: 500, maxQuantity: 10000000, avgStartTime: '30 minutes', speed: '100000/day' },
+        { name: 'LinkedIn Connections', category: 'LinkedIn', description: 'LinkedIn profile connections.', price: 500, minQuantity: 50, maxQuantity: 10000, avgStartTime: '24 hours', speed: '500/day' },
+        { name: 'LinkedIn Followers [Company]', category: 'LinkedIn', description: 'LinkedIn company page followers.', price: 400, minQuantity: 100, maxQuantity: 50000, avgStartTime: '24 hours', speed: '1000/day' },
+        { name: 'LinkedIn Post Likes', category: 'LinkedIn', description: 'LinkedIn post likes.', price: 300, minQuantity: 50, maxQuantity: 50000, avgStartTime: '6 hours', speed: '2000/day' },
+        { name: 'Discord Server Members', category: 'Discord', description: 'Discord server members.', price: 100, minQuantity: 100, maxQuantity: 100000, avgStartTime: '6 hours', speed: '5000/day' },
+        { name: 'Discord Members [Cheapest]', category: 'Discord', description: 'Budget Discord members.', price: 50, minQuantity: 100, maxQuantity: 500000, avgStartTime: '12 hours', speed: '10000/day' },
+        { name: 'Spotify Plays', category: 'Spotify', description: 'Spotify track plays. Real streams.', price: 100, minQuantity: 1000, maxQuantity: 10000000, avgStartTime: '1 hour', speed: '50000/day' },
+        { name: 'Spotify Followers', category: 'Spotify', description: 'Spotify artist followers.', price: 200, minQuantity: 100, maxQuantity: 50000, avgStartTime: '24 hours', speed: '1000/day' },
+        { name: 'Spotify Monthly Listeners', category: 'Spotify', description: 'Spotify monthly listeners.', price: 300, minQuantity: 500, maxQuantity: 1000000, avgStartTime: '24 hours', speed: '10000/day' },
+        { name: 'Pinterest Followers', category: 'Pinterest', description: 'Pinterest account followers.', price: 150, minQuantity: 100, maxQuantity: 100000, avgStartTime: '24 hours', speed: '2000/day' },
+        { name: 'Pinterest Repins', category: 'Pinterest', description: 'Pinterest pin repins.', price: 80, minQuantity: 50, maxQuantity: 100000, avgStartTime: '2 hours', speed: '5000/day' },
+        { name: 'Pinterest Likes', category: 'Pinterest', description: 'Pinterest pin likes.', price: 60, minQuantity: 50, maxQuantity: 100000, avgStartTime: '2 hours', speed: '5000/day' },
+        { name: 'Threads Followers', category: 'Threads', description: 'Threads app followers.', price: 150, minQuantity: 100, maxQuantity: 100000, avgStartTime: '12 hours', speed: '3000/day' },
+        { name: 'Threads Likes', category: 'Threads', description: 'Threads post likes.', price: 80, minQuantity: 50, maxQuantity: 200000, avgStartTime: '1 hour', speed: '10000/day' },
+        { name: 'Threads Reposts', category: 'Threads', description: 'Threads post reposts.', price: 100, minQuantity: 50, maxQuantity: 100000, avgStartTime: '2 hours', speed: '5000/day' },
+        { name: 'Snapchat Story Views', category: 'Snapchat', description: 'Snapchat story views.', price: 50, minQuantity: 500, maxQuantity: 1000000, avgStartTime: '1 hour', speed: '50000/day' },
+        { name: 'Snapchat Spotlight Views', category: 'Snapchat', description: 'Snapchat spotlight views.', price: 30, minQuantity: 1000, maxQuantity: 10000000, avgStartTime: '30 minutes', speed: '100000/day' },
+        { name: 'Website Traffic [Worldwide]', category: 'Website & SEO', description: 'Real website traffic worldwide.', price: 100, minQuantity: 1000, maxQuantity: 10000000, avgStartTime: '1 hour', speed: '50000/day' },
+        { name: 'Website Traffic [Pakistan]', category: 'Website & SEO', description: 'Website traffic from Pakistan.', price: 200, minQuantity: 1000, maxQuantity: 5000000, avgStartTime: '1 hour', speed: '20000/day' },
+        { name: 'Google Reviews [5 Star]', category: 'Website & SEO', description: 'Google business 5-star reviews.', price: 500, minQuantity: 1, maxQuantity: 100, avgStartTime: '24 hours', speed: '5/day' },
+        { name: 'AI Image Generation', category: 'AI Services', description: 'Custom AI generated images. HD quality.', price: 100, minQuantity: 1, maxQuantity: 100, avgStartTime: '1 hour', speed: '10/day' },
+        { name: 'AI Video Generation', category: 'AI Services', description: 'AI generated short videos.', price: 500, minQuantity: 1, maxQuantity: 20, avgStartTime: '6 hours', speed: '5/day' },
+        { name: 'AI Content Writing', category: 'AI Services', description: 'AI-powered content writing.', price: 200, minQuantity: 1, maxQuantity: 50, avgStartTime: '2 hours', speed: '10/day' },
+        { name: 'AI Logo Design', category: 'AI Services', description: 'AI generated logo designs.', price: 300, minQuantity: 1, maxQuantity: 20, avgStartTime: '2 hours', speed: '5/day' },
+      ]
+      for (const s of svcs) await prisma.service.create({ data: s })
+      console.log(`✅ Seeded ${svcs.length} services`)
+    }
+    const planCount = await prisma.plan.count()
+    if (planCount < 1) {
+      const plans = [
+        { name: 'YouTube Growth', platform: 'YouTube', description: 'Complete YouTube growth package', price: 1000, duration: 30, views: 10000, subscribers: 500, features: 'Views, Subscribers, Likes' },
+        { name: 'Instagram Boost', platform: 'Instagram', description: 'Instagram growth package', price: 500, duration: 30, views: 0, subscribers: 1000, features: 'Followers, Likes' },
+        { name: 'TikTok Starter', platform: 'TikTok', description: 'TikTok growth package', price: 750, duration: 30, views: 50000, subscribers: 200, features: 'Views, Followers, Likes' },
+      ]
+      for (const p of plans) await prisma.plan.create({ data: p })
+    }
+    console.log('✅ Seeding complete')
   } catch (e: any) {
     console.log('⚠️ Seed skipped:', e.message)
   }

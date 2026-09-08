@@ -242,6 +242,8 @@ app.post('/deposits', authMiddleware, async (c) => {
     if (!userId) return c.json({ error: 'Please login to submit a deposit' }, 401)
     if (!amount || !method) return c.json({ error: 'Amount and method required' }, 400)
     if (amount <= 0) return c.json({ error: 'Amount must be positive' }, 400)
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user) return c.json({ error: 'User not found. Please register again or login again.' }, 404)
     const deposit = await prisma.deposit.create({
       data: {
         userId,
@@ -258,7 +260,7 @@ app.post('/deposits', authMiddleware, async (c) => {
     return c.json({ deposit })
   } catch (e: any) {
     console.error('[Deposit Error]', e)
-    return c.json({ error: String(e?.message || e || 'Failed to submit deposit') }, 500)
+    return c.json({ error: 'Failed to submit deposit. Please try again.' }, 500)
   }
 })
 
@@ -313,7 +315,7 @@ app.post('/admin/deposits/:id/approve', adminMiddleware, async (c) => {
     return c.json({ success: true, newBalance: result.newBalance })
   } catch (e: any) {
     console.error('[Approve Deposit Error]', e)
-    return c.json({ error: String(e?.message || e || 'Failed to approve deposit') }, 500)
+    return c.json({ error: e?.message || 'Failed to approve deposit' }, 500)
   }
 })
 
@@ -334,7 +336,7 @@ app.post('/admin/deposits/:id/reject', adminMiddleware, async (c) => {
       }
     }).catch(() => {})
     return c.json({ success: true })
-  } catch (e: any) { return c.json({ error: String(e?.message || e || 'Failed to reject deposit') }, 500) }
+  } catch (e: any) { return c.json({ error: e?.message || 'Failed to reject deposit' }, 500) }
 })
 
 // --- ORDERS ---
@@ -420,7 +422,7 @@ app.post('/admin/orders/:id/start', adminMiddleware, async (c) => {
       return { newBalance }
     })
     return c.json({ success: true, newBalance: result.newBalance })
-  } catch (e: any) { return c.json({ error: String(e?.message || e || 'Failed to start order') }, 500) }
+  } catch (e: any) { return c.json({ error: e?.message || 'Failed to start order' }, 500) }
 })
 
 app.post('/admin/orders/:id/complete', adminMiddleware, async (c) => {
@@ -439,7 +441,7 @@ app.post('/admin/orders/:id/complete', adminMiddleware, async (c) => {
       }
     }).catch(() => {})
     return c.json({ success: true })
-  } catch (e: any) { return c.json({ error: String(e?.message || e || 'Failed to complete order') }, 500) }
+  } catch (e: any) { return c.json({ error: e?.message || 'Failed to complete order' }, 500) }
 })
 
 app.post('/admin/orders/:id/cancel', adminMiddleware, async (c) => {
@@ -478,7 +480,7 @@ app.post('/admin/orders/:id/cancel', adminMiddleware, async (c) => {
       return true
     })
     return c.json({ success: true })
-  } catch (e: any) { return c.json({ error: String(e?.message || e || 'Failed to cancel order') }, 500) }
+  } catch (e: any) { return c.json({ error: e?.message || 'Failed to cancel order' }, 500) }
 })
 
 // --- WALLET TRANSACTIONS ---

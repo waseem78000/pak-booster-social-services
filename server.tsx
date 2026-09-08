@@ -26,16 +26,24 @@ app.use('*', async (c, next) => {
 // Health check endpoint
 app.get('/health', (c) => c.json({ ok: true, timestamp: new Date().toISOString() }))
 
-// CRUD routes (available after schema.prisma has models)
-try {
-  const { createAllRoutes } = await import('./src/generated')
-  const { prisma } = await import('./src/lib/db')
-  app.route('/api', createAllRoutes(prisma))
-} catch {
-  // No generated routes yet — CRUD routes will appear after schema.prisma is written
-}
+// Auth middleware — runs for ALL /api/* routes
+import jwt from 'jsonwebtoken'
+const JWT_SECRET = process.env.JWT_SECRET || 'pakbooster2026secret'
 
-// Custom API routes (always mounted)
+app.use('*', async (c, next) => {
+  const auth = c.req.header('Authorization')
+  if (auth?.startsWith('Bearer ')) {
+    try {
+      const decoded = jwt.verify(auth.slice(7), JWT_SECRET) as any
+      c.set('auth', { userId: decoded.userId, tunnelAuthenticated: true })
+      c.set('userId', decoded.userId)
+      c.set('isAdmin', decoded.isAdmin || false)
+    } catch {}
+  }
+  await next()
+})
+
+// Custom API routes (handles all CRUD + business logic)
 app.route('/api', customRoutes)
 
 // Installed-integration tools proxy → forwards to the agent runtime

@@ -76,6 +76,7 @@ function authMiddleware(c: any, next: any) {
   if (!auth?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401)
   try {
     const decoded = jwt.verify(auth.slice(7), JWT_SECRET) as any
+    c.set('auth', { userId: decoded.userId, tunnelAuthenticated: true })
     c.set('userId', decoded.userId)
     c.set('isAdmin', decoded.isAdmin || false)
     return next()
@@ -236,18 +237,29 @@ app.delete('/admin/services/:id', adminMiddleware, async (c) => {
 // --- DEPOSITS ---
 app.post('/deposits', authMiddleware, async (c) => {
   try {
-    const userId = c.get('userId')
+    const userId = c.get('auth')?.userId || c.get('userId')
     const { amount, method, transactionId, senderInfo, screenshot } = await c.req.json()
+    if (!userId) return c.json({ error: 'Please login to submit a deposit' }, 401)
     if (!amount || !method) return c.json({ error: 'Amount and method required' }, 400)
     if (amount <= 0) return c.json({ error: 'Amount must be positive' }, 400)
     const deposit = await prisma.deposit.create({
-      data: { userId, amount: parseFloat(amount), method, transactionId, senderInfo, screenshot }
+      data: {
+        userId,
+        amount: parseFloat(amount),
+        method,
+        transactionId: transactionId || null,
+        senderInfo: senderInfo || null,
+        screenshot: screenshot || null
+      }
     })
     await prisma.notification.create({
       data: { userId, title: 'Deposit Submitted', message: `Your Rs. ${amount} deposit request has been submitted and is pending review.`, type: 'info' }
-    })
+    }).catch(() => {})
     return c.json({ deposit })
-  } catch (e: any) { return c.json({ error: e.message || 'Failed to submit deposit' }, 500) }
+  } catch (e: any) {
+    console.error('[Deposit Error]', e)
+    return c.json({ error: String(e?.message || e || 'Failed to submit deposit') }, 500)
+  }
 })
 
 app.get('/deposits', authMiddleware, async (c) => {

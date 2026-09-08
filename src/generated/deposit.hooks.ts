@@ -58,15 +58,20 @@ export interface DepositHooks {
  * Default Deposit hooks (customize as needed)
  */
 export const depositHooks: DepositHooks = {
-  // beforeList: async (ctx) => {
-  //   // Query params are automatically added to where clause
-  //   // Example: GET /api/projects?workspaceId=123 => where: { workspaceId: "123" }
-  //   
-  //   // You can override or extend the where clause:
-  //   // return { ok: true, data: { where: { ...ctx.query, userId: ctx.userId } } }
-  // },
-  // beforeCreate: async (input, ctx) => {
-  //   // Set userId on create
-  //   return { ok: true, data: { ...input, userId: ctx.userId } }
-  // },
+  beforeCreate: async (input, ctx) => {
+    return { ok: true, data: { ...input, userId: ctx.userId } }
+  },
+  beforeList: async (ctx) => {
+    return { ok: true, data: { where: { userId: ctx.userId } } }
+  },
+  afterCreate: async (record, ctx) => {
+    await ctx.prisma.notification.create({
+      data: {
+        userId: ctx.userId!,
+        title: 'Deposit Submitted',
+        message: `Your Rs. ${record.amount} deposit request has been submitted and is pending review.`,
+        type: 'info'
+      }
+    })
+  },
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { api, formatCurrency, formatDate } from '@/lib/api'
+import { api, formatCurrency, formatDate, parseSenderInfo } from '@/lib/api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -161,16 +161,42 @@ export default function AdminTransactions() {
                       {/* Sender Info */}
                       {t.deposit.senderInfo && (
                         <div className="bg-slate-800/30 rounded-lg p-3 border border-slate-700/30">
-                          <div className="flex items-center gap-1.5 text-slate-500 text-xs mb-1">
-                            <User className="w-3 h-3" /> Sender Name / Account Number
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-white text-sm">{t.deposit.senderInfo}</p>
-                            <button onClick={() => copyText(t.deposit.senderInfo, `sender-${t.id}`)}
-                              className="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
-                              {copiedField === `sender-${t.id}` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
-                            </button>
-                          </div>
+                          {(() => {
+                            const sender = parseSenderInfo(t.deposit.senderInfo)
+                            return (
+                              <div className="space-y-2">
+                                <span className="text-slate-500 text-xs flex items-center gap-1.5">
+                                  <User className="w-3 h-3" /> Sender Details
+                                </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                                  <div>
+                                    <p className="text-slate-400 text-xs">Name</p>
+                                    <div className="flex items-center gap-1.5">
+                                      <p className="text-white">{sender.name || sender.raw}</p>
+                                      {sender.name && <button onClick={() => copyText(sender.name!, `sname-${t.id}`)}
+                                        className="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+                                        {copiedField === `sname-${t.id}` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                                      </button>}
+                                    </div>
+                                  </div>
+                                  {sender.account && <div>
+                                    <p className="text-slate-400 text-xs">Account Number</p>
+                                    <div className="flex items-center gap-1.5">
+                                      <p className="text-white font-mono">{sender.account}</p>
+                                      <button onClick={() => copyText(sender.account!, `sacc-${t.id}`)}
+                                        className="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+                                        {copiedField === `sacc-${t.id}` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                                      </button>
+                                    </div>
+                                  </div>}
+                                  {sender.bank && <div>
+                                    <p className="text-slate-400 text-xs">Bank / Wallet</p>
+                                    <p className="text-white">{sender.bank}</p>
+                                  </div>}
+                                </div>
+                              </div>
+                            )
+                          })()}
                         </div>
                       )}
 

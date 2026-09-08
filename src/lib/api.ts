@@ -110,3 +110,14 @@ export function formatCurrency(amount: number) {
 export function formatDate(d: string | Date) {
   return new Date(d).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
+
+export function parseSenderInfo(info: string | null): { name?: string; account?: string; bank?: string; raw?: string } {
+  if (!info) return { raw: 'Not provided' }
+  try {
+    const parsed = JSON.parse(info)
+    if (parsed.name || parsed.account || parsed.bank) return parsed
+    return { raw: info }
+  } catch {
+    return { raw: info }
+  }
+}

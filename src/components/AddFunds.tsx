@@ -14,7 +14,7 @@ export default function AddFunds({ user }: { user: any }) {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
-  const [form, setForm] = useState({ amount: '', method: 'jazzcash', transactionId: '', senderInfo: '', screenshot: '' })
+  const [form, setForm] = useState({ amount: '', method: 'jazzcash', transactionId: '', senderName: '', senderAccount: '', senderBank: '', screenshot: '' })
 
   useEffect(() => { loadData() }, [])
 
@@ -44,17 +44,21 @@ export default function AddFunds({ user }: { user: any }) {
     setSuccess('')
     if (!form.amount || parseFloat(form.amount) <= 0) { setError('Please enter a valid amount'); return }
     if (!form.transactionId) { setError('Transaction ID is required'); return }
+    if (!form.senderName.trim()) { setError('Sender name is required'); return }
+    if (!form.senderAccount.trim()) { setError('Sender account number is required'); return }
+    if (!form.senderBank.trim()) { setError('Bank / wallet name is required'); return }
     setSubmitting(true)
     try {
+      const senderInfo = JSON.stringify({ name: form.senderName.trim(), account: form.senderAccount.trim(), bank: form.senderBank.trim() })
       await api.createDeposit({
         amount: parseFloat(form.amount),
         method: form.method,
         transactionId: form.transactionId,
-        senderInfo: form.senderInfo,
+        senderInfo,
         screenshot: form.screenshot,
       })
       setSuccess('Payment request submitted successfully! It will be reviewed by admin shortly.')
-      setForm({ amount: '', method: 'jazzcash', transactionId: '', senderInfo: '', screenshot: '' })
+      setForm({ amount: '', method: 'jazzcash', transactionId: '', senderName: '', senderAccount: '', senderBank: '', screenshot: '' })
       loadData()
     } catch (e: any) { setError(typeof e.message === 'string' ? e.message : typeof e === 'string' ? e : 'Failed to submit payment') } finally { setSubmitting(false) }
   }
@@ -148,11 +152,25 @@ export default function AddFunds({ user }: { user: any }) {
                   className="mt-1 bg-slate-800 border-slate-700 text-white" />
               </div>
             </div>
-            <div>
-              <Label className="text-slate-300">Sender Name / Account Number (Optional)</Label>
-              <Input placeholder="Sender info" value={form.senderInfo}
-                onChange={e => setForm({ ...form, senderInfo: e.target.value })}
-                className="mt-1 bg-slate-800 border-slate-700 text-white" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <Label className="text-slate-300">Sender Name <span className="text-red-400">*</span></Label>
+                <Input placeholder="e.g. Waseem Abbas" value={form.senderName}
+                  onChange={e => setForm({ ...form, senderName: e.target.value })}
+                  className="mt-1 bg-slate-800 border-slate-700 text-white" />
+              </div>
+              <div>
+                <Label className="text-slate-300">Account Number <span className="text-red-400">*</span></Label>
+                <Input placeholder="e.g. 03279178000" value={form.senderAccount}
+                  onChange={e => setForm({ ...form, senderAccount: e.target.value })}
+                  className="mt-1 bg-slate-800 border-slate-700 text-white" />
+              </div>
+              <div>
+                <Label className="text-slate-300">Bank / Wallet Name <span className="text-red-400">*</span></Label>
+                <Input placeholder="e.g. JazzCash, EasyPaisa, HBL, Meezan" value={form.senderBank}
+                  onChange={e => setForm({ ...form, senderBank: e.target.value })}
+                  className="mt-1 bg-slate-800 border-slate-700 text-white" />
+              </div>
             </div>
             <div>
               <Label className="text-slate-300">Payment Screenshot</Label>

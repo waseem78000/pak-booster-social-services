@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { api, formatCurrency, formatDate } from '@/lib/api'
+import { api, formatCurrency, formatDate, parseSenderInfo } from '@/lib/api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -143,6 +143,19 @@ export default function AdminDeposits() {
                 <div><p className="text-slate-400">TX ID</p><p className="text-white font-mono text-xs">{viewDeposit.transactionId}</p></div>
                 <div><p className="text-slate-400">User</p><p className="text-white">{viewDeposit.user?.username}</p></div>
               </div>
+              {(() => {
+                const sender = parseSenderInfo(viewDeposit.senderInfo)
+                return (
+                  <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 space-y-2">
+                    <p className="text-purple-400 text-xs font-medium uppercase">Sender Details</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                      <div><p className="text-slate-400 text-xs">Name</p><p className="text-white">{sender.name || sender.raw}</p></div>
+                      {sender.account && <div><p className="text-slate-400 text-xs">Account Number</p><p className="text-white font-mono">{sender.account}</p></div>}
+                      {sender.bank && <div><p className="text-slate-400 text-xs">Bank / Wallet</p><p className="text-white">{sender.bank}</p></div>}
+                    </div>
+                  </div>
+                )
+              })()}
               {viewDeposit.status === 'pending' && (
                 <div className="flex gap-2">
                   <Button onClick={() => { handleApprove(viewDeposit.id); setViewDeposit(null) }}

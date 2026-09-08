@@ -1,0 +1,30 @@
+# Database
+prisma/dev.db
+prisma/dev.db-journal
+
+# Shogo runtime
+.shogo/
+
+# Memory
+memory/
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

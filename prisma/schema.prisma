@@ -1,0 +1,198 @@
+// SHOGO:CUSTOM-START prisma-header
+// Managed by Shogo. Do not add a datasource `url` or change the generator `provider` — the database URL is configured in prisma.config.ts (Prisma 7+).
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+// SHOGO:CUSTOM-END
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  username       String   @unique
+  name           String?
+  passwordHash   String   @map("password_hash")
+  walletBalance  Float    @default(0) @map("wallet_balance")
+  status         String   @default("active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  deposits          Deposit[]
+  orders            Order[]
+  notifications     Notification[]
+  supportTickets    SupportTicket[]
+  walletTransactions WalletTransaction[]
+  userPlans         UserPlan[]
+
+  @@map("users")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         String   @default("admin")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("admin_users")
+}
+
+model PaymentSettings {
+  id             String   @id @default(cuid())
+  jazzcashEnabled Boolean @default(true) @map("jazzcash_enabled")
+  jazzcashNumber  String? @map("jazzcash_number")
+  jazzcashTitle   String? @map("jazzcash_title")
+  easypaisaEnabled Boolean @default(true) @map("easypaisa_enabled")
+  easypaisaNumber String? @map("easypaisa_number")
+  easypaisaTitle  String? @map("easypaisa_title")
+  qrEnabled       Boolean @default(true) @map("qr_enabled")
+  qrCode          String? @map("qr_code")
+  qrTitle         String? @map("qr_title")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("payment_settings")
+}
+
+model Service {
+  id              String   @id @default(cuid())
+  name            String
+  category        String
+  description     String?
+  price           Float
+  minQuantity     Int      @default(100) @map("min_quantity")
+  maxQuantity     Int      @default(100000) @map("max_quantity")
+  avgStartTime    String?  @map("avg_start_time")
+  speed           String?
+  status          String   @default("active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  orders Order[]
+
+  @@map("services")
+}
+
+model Deposit {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  amount        Float
+  method        String
+  transactionId String?  @map("transaction_id")
+  senderInfo    String?  @map("sender_info")
+  screenshot    String?
+  status        String   @default("pending")
+  reviewedBy    String?  @map("reviewed_by")
+  reviewedAt    DateTime? @map("reviewed_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+  walletTransactions WalletTransaction[]
+
+  @@map("deposits")
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  serviceId   String   @map("service_id")
+  link        String
+  quantity    Int
+  amount      Float
+  status      String   @default("pending")
+  approvedBy  String?  @map("approved_by")
+  startCount  Int?     @map("start_count")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+  walletTransactions WalletTransaction[]
+
+  @@map("orders")
+}
+
+model WalletTransaction {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  type            String
+  amount          Float
+  previousBalance Float    @map("previous_balance")
+  newBalance      Float    @map("new_balance")
+  description     String
+  orderId         String?  @map("order_id")
+  depositId       String?  @map("deposit_id")
+  status          String   @default("completed")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id])
+  order   Order?   @relation(fields: [orderId], references: [id])
+  deposit Deposit? @relation(fields: [depositId], references: [id])
+
+  @@map("wallet_transactions")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String
+  type      String   @default("info")
+  readStatus Boolean @default(false) @map("read_status")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  subject   String
+  message   String
+  status    String   @default("open")
+  reply     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("support_tickets")
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  platform    String
+  price       Float
+  duration    Int
+  views       Int      @default(0)
+  subscribers Int      @default(0)
+  features    String?
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  userPlans UserPlan[]
+  @@map("plans")
+}
+
+model UserPlan {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  planId    String   @map("plan_id")
+  status    String   @default("active")
+  startDate DateTime @default(now()) @map("start_date")
+  endDate   DateTime @map("end_date")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+  plan Plan @relation(fields: [planId], references: [id])
+
+  @@unique([userId, planId])
+  @@map("user_plans")
+}

@@ -492,7 +492,11 @@ app.get('/wallet-transactions', authMiddleware, async (c) => {
 app.get('/admin/wallet-transactions', adminMiddleware, async (c) => {
   const transactions = await prisma.walletTransaction.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { user: { select: { id: true, username: true } } }
+    include: {
+      user: { select: { id: true, username: true, email: true } },
+      deposit: { select: { id: true, amount: true, method: true, transactionId: true, senderInfo: true, status: true, screenshot: true, reviewedAt: true } },
+      order: { select: { id: true, link: true, amount: true, status: true } }
+    }
   })
   return c.json({ transactions })
 })

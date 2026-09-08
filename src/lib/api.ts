@@ -20,7 +20,12 @@ async function request(path: string, options: RequestInit = {}) {
 
   const res = await fetch(`${BASE}${path}`, { ...options, headers })
   const data = await res.json()
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
+  if (!res.ok) {
+    const errMsg = typeof data.error === 'string' ? data.error
+      : typeof data.error === 'object' && data.error !== null ? (data.error.message || data.error.error || JSON.stringify(data.error))
+      : `Request failed (${res.status})`
+    throw new Error(errMsg)
+  }
   return data
 }
 

@@ -56,7 +56,7 @@ export default function AddFunds({ user }: { user: any }) {
       setSuccess('Payment request submitted successfully! It will be reviewed by admin shortly.')
       setForm({ amount: '', method: 'jazzcash', transactionId: '', senderInfo: '', screenshot: '' })
       loadData()
-    } catch (e: any) { setError(e.message || 'Failed to submit') } finally { setSubmitting(false) }
+    } catch (e: any) { setError(typeof e.message === 'string' ? e.message : typeof e === 'string' ? e : 'Failed to submit payment') } finally { setSubmitting(false) }
   }
 
   const statusIcon = (s: string) => {

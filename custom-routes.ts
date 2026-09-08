@@ -9,6 +9,49 @@ const app = new Hono()
 const JWT_SECRET = process.env.JWT_SECRET || 'smm-panel-secret-key-2026'
 const UPLOADS_DIR = join(process.cwd(), 'uploads')
 
+// --- HEALTH CHECK ---
+app.get('/health', (c) => {
+  return c.json({ ok: true, timestamp: new Date().toISOString() })
+})
+
+// --- AUTO-SEED (runs once on startup) ---
+const seedOnce = async () => {
+  try {
+    const existing = await prisma.adminUser.findFirst()
+    if (existing) return
+    console.log('🌱 Seeding default admin...')
+    const adminHash = await bcrypt.hash('admin123', 12)
+    await prisma.adminUser.create({
+      data: { username: 'admin', email: 'admin@smmpanel.com', passwordHash: adminHash, role: 'superadmin' }
+    })
+    await prisma.paymentSettings.create({ data: {} })
+    const services = [
+      { name: 'Instagram Followers', category: 'Instagram', description: 'Real Instagram followers', price: 0.5, minQuantity: 100, maxQuantity: 100000, avgStartTime: '1-2 hours', speed: '1000/day' },
+      { name: 'Instagram Likes', category: 'Instagram', description: 'High quality Instagram likes', price: 0.3, minQuantity: 50, maxQuantity: 50000, avgStartTime: '30 min', speed: '5000/day' },
+      { name: 'Instagram Views', category: 'Instagram', description: 'Instagram reel/story views', price: 0.1, minQuantity: 100, maxQuantity: 1000000, avgStartTime: '15 min', speed: '50000/day' },
+      { name: 'YouTube Subscribers', category: 'YouTube', description: 'Real YouTube subscribers', price: 5.0, minQuantity: 100, maxQuantity: 50000, avgStartTime: '24 hours', speed: '500/day' },
+      { name: 'YouTube Views', category: 'YouTube', description: 'YouTube video views', price: 0.5, minQuantity: 500, maxQuantity: 1000000, avgStartTime: '1 hour', speed: '10000/day' },
+      { name: 'YouTube Likes', category: 'YouTube', description: 'YouTube video likes', price: 1.0, minQuantity: 50, maxQuantity: 100000, avgStartTime: '2 hours', speed: '2000/day' },
+      { name: 'TikTok Followers', category: 'TikTok', description: 'Real TikTok followers', price: 1.0, minQuantity: 100, maxQuantity: 100000, avgStartTime: '12 hours', speed: '1000/day' },
+      { name: 'TikTok Likes', category: 'TikTok', description: 'TikTok video likes', price: 0.5, minQuantity: 100, maxQuantity: 500000, avgStartTime: '1 hour', speed: '10000/day' },
+      { name: 'Facebook Page Likes', category: 'Facebook', description: 'Real Facebook page likes', price: 2.0, minQuantity: 100, maxQuantity: 100000, avgStartTime: '24 hours', speed: '500/day' },
+      { name: 'Twitter Followers', category: 'Twitter/X', description: 'Twitter/X followers', price: 1.5, minQuantity: 100, maxQuantity: 50000, avgStartTime: '12 hours', speed: '500/day' },
+      { name: 'Telegram Members', category: 'Telegram', description: 'Telegram group/channel members', price: 1.0, minQuantity: 100, maxQuantity: 100000, avgStartTime: '6 hours', speed: '1000/day' },
+    ]
+    for (const s of services) await prisma.service.create({ data: s })
+    const plans = [
+      { name: 'YouTube Growth', platform: 'YouTube', description: 'Complete YouTube growth package', price: 1000, duration: 30, views: 10000, subscribers: 500, features: 'Views, Subscribers, Likes' },
+      { name: 'Instagram Boost', platform: 'Instagram', description: 'Instagram growth package', price: 500, duration: 30, views: 0, subscribers: 1000, features: 'Followers, Likes' },
+      { name: 'TikTok Starter', platform: 'TikTok', description: 'TikTok growth package', price: 750, duration: 30, views: 50000, subscribers: 200, features: 'Views, Followers, Likes' },
+    ]
+    for (const p of plans) await prisma.plan.create({ data: p })
+    console.log('✅ Seeded admin (admin/admin123) + services + plans')
+  } catch (e: any) {
+    console.log('⚠️ Seed skipped:', e.message)
+  }
+}
+seedOnce()
+
 if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true })
 
 // Serve uploaded files

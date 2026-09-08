@@ -8,11 +8,12 @@ COPY package.json bun.lock ./
 # Install dependencies
 RUN bun install --frozen-lockfile
 
-# Copy Prisma schema and generate client
+# Copy Prisma schema and generate client + push tables
 COPY prisma ./prisma
 RUN bun x prisma generate
+RUN bun x prisma db push --skip-generate
 
-# Copy source code
+# Copy everything else
 COPY . .
 
 # Build frontend
@@ -23,4 +24,5 @@ RUN mkdir -p uploads
 
 EXPOSE 3001
 
-CMD ["bun", "run", "start"]
+# Seed + start
+CMD ["sh", "-c", "bun x prisma db push --skip-generate && bun run server.tsx"]

@@ -44,11 +44,15 @@ const tools = createToolsHandlers({})
 app.post('/api/tools/execute', (c) => tools.execute(c.req.raw))
 app.get('/api/tools/schemas', (c) => tools.list(c.req.raw))
 
-// Serve static files in production
-app.use('/*', serveStatic({ root: './dist' }))
-app.get('*', serveStatic({ path: './dist/index.html' }))
+// Serve static files in production (Bun only — Vercel handles static via vercel.json)
+if (typeof Bun !== 'undefined') {
+  app.use('/*', serveStatic({ root: './dist' }))
+  app.get('*', serveStatic({ path: './dist/index.html' }))
 
-const port = Number(process.env.PORT) || 3001
-console.log(`🚀 Server running on http://localhost:${port}`)
+  const port = Number(process.env.PORT) || 3001
+  console.log(`🚀 Server running on http://localhost:${port}`)
 
-Bun.serve({ port, fetch: app.fetch })
+  Bun.serve({ port, fetch: app.fetch })
+}
+
+export default app

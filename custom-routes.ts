@@ -2,12 +2,29 @@ import { Hono } from 'hono'
 import { prisma } from './src/lib/db'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
-import { join } from 'path'
+
+const isVercel = !!process.env.VERCEL
+
+let readFileSync: any, writeFileSync: any, existsSync: any, mkdirSync: any, join: any
+if (!isVercel) {
+  const fs = await import('fs')
+  const path = await import('path')
+  readFileSync = fs.readFileSync
+  writeFileSync = fs.writeFileSync
+  existsSync = fs.existsSync
+  mkdirSync = fs.mkdirSync
+  join = path.join
+} else {
+  join = (...parts: string[]) => parts.join('/')
+  existsSync = () => false
+  readFileSync = () => Buffer.alloc(0)
+  writeFileSync = () => {}
+  mkdirSync = () => {}
+}
 
 const app = new Hono()
 const JWT_SECRET = process.env.JWT_SECRET || 'smm-panel-secret-key-2026'
-const UPLOADS_DIR = join(process.cwd(), 'uploads')
+const UPLOADS_DIR = isVercel ? '/tmp/uploads' : (join(process.cwd(), 'uploads'))
 // hot reload trigger 2
 
 // --- HEALTH CHECK ---

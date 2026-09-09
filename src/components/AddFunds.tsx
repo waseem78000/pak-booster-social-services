@@ -47,6 +47,7 @@ export default function AddFunds({ user }: { user: any }) {
     if (!form.senderName.trim()) { setError('Sender name is required'); return }
     if (!form.senderAccount.trim()) { setError('Sender account number is required'); return }
     if (!form.senderBank.trim()) { setError('Bank / wallet name is required'); return }
+    if (!form.screenshot) { setError('Payment screenshot is required. Please upload a screenshot of your payment.'); return }
     setSubmitting(true)
     try {
       const senderInfo = JSON.stringify({ name: form.senderName.trim(), account: form.senderAccount.trim(), bank: form.senderBank.trim() })

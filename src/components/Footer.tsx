@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import { Mail, Phone, Instagram, Youtube, Facebook, Twitter, MessageCircle } from 'lucide-react'
 
 interface SiteSettings {
@@ -15,21 +14,33 @@ interface SiteSettings {
   telegram: string
 }
 
+const defaultSettings: SiteSettings = {
+  siteName: 'PAK BOOSTER',
+  siteTagline: 'Social Services',
+  adminName: 'Waseem Abbas',
+  adminPhone: '03479178048',
+  adminEmail: 'Seemi78000@gmail.com',
+  adminWhatsapp: '03479178048',
+  instagram: '',
+  youtube: '',
+  facebook: '',
+  twitter: '',
+  telegram: '',
+}
+
+function loadSettings(): SiteSettings {
+  try {
+    const raw = localStorage.getItem('pakbooster_site_settings')
+    return raw ? { ...defaultSettings, ...JSON.parse(raw) } : defaultSettings
+  } catch { return defaultSettings }
+}
+
 interface FooterProps {
   isDark: boolean
 }
 
 export default function Footer({ isDark }: FooterProps) {
-  const [settings, setSettings] = useState<SiteSettings | null>(null)
-
-  useEffect(() => {
-    fetch('/api/site-settings')
-      .then(r => r.json())
-      .then(d => setSettings(d.settings))
-      .catch(() => {})
-  }, [])
-
-  if (!settings) return null
+  const settings = loadSettings()
 
   const socialLinks = [
     { url: settings.instagram, icon: Instagram, label: 'Instagram', color: 'hover:text-pink-400' },

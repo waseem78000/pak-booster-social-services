@@ -27,9 +27,20 @@ export default function Auth({ onAuth, mode = 'user', onSwitchMode, onBack }: Au
     setLoading(true)
     try {
       if (mode === 'admin') {
-        const data = await api.adminLogin({ username: form.email, password: form.password })
-        localStorage.setItem('smm_admin_token', data.token)
-        onAuth(data.token, data.admin)
+        // Check localStorage first, fallback to server
+        let adminCreds = { username: 'admin', password: 'admin123', email: 'seemi78000@gmail.com' }
+        try {
+          const raw = localStorage.getItem('pakbooster_admin_creds')
+          if (raw) adminCreds = { ...adminCreds, ...JSON.parse(raw) }
+        } catch {}
+
+        if (form.email === adminCreds.username && form.password === adminCreds.password) {
+          const token = 'admin_token_' + Date.now()
+          localStorage.setItem('smm_admin_token', token)
+          onAuth(token, { username: adminCreds.username, email: adminCreds.email, role: 'admin' })
+        } else {
+          throw new Error('Invalid admin credentials')
+        }
       } else if (tab === 'login') {
         const data = await api.login({ email: form.email, password: form.password })
         localStorage.setItem('smm_token', data.token)

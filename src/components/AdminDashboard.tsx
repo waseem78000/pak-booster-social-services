@@ -1,14 +1,21 @@
 import { useState, useEffect } from 'react'
 import { api, formatCurrency } from '@/lib/api'
 import { Card, CardContent } from '@/components/ui/card'
-import { Users, CreditCard, ListOrdered, DollarSign, Clock, CheckCircle, TrendingUp, Wallet, XCircle } from 'lucide-react'
+import { Users, CreditCard, ListOrdered, DollarSign, Clock, CheckCircle, TrendingUp, Wallet, XCircle, AlertCircle } from 'lucide-react'
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.adminDashboard().then(d => setStats(d)).catch(() => {}).finally(() => setLoading(false))
+    api.adminDashboard().then(d => setStats(d)).catch(() => {
+      setStats({
+        totalUsers: 0, totalDeposits: 0, pendingDeposits: 0,
+        approvedDeposits: 0, rejectedDeposits: 0, totalOrders: 0,
+        pendingOrders: 0, processingOrders: 0, completedOrders: 0,
+        totalRevenue: 0, walletActivity: 0, dbConnected: false,
+      })
+    }).finally(() => setLoading(false))
   }, [])
 
   const cards = stats ? [
@@ -37,6 +44,16 @@ export default function AdminDashboard() {
           {[1,2,3,4,5,6,7,8,9,10].map(i => <div key={i} className="bg-slate-900 rounded-xl h-28 animate-pulse" />)}
         </div>
       ) : (
+        <>
+          {stats && !stats.dbConnected && (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-sm">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold">Database not connected on Vercel</p>
+                <p className="text-amber-400/70 text-xs mt-1">Stats show zero. Set up Turso database in Vercel env vars to see real data. Go to Admin Settings to update contact info.</p>
+              </div>
+            </div>
+          )}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {cards.map((c, i) => (
             <Card key={i} className="bg-slate-900 border-slate-800">
@@ -50,6 +67,7 @@ export default function AdminDashboard() {
             </Card>
           ))}
         </div>
+        </>
       )}
     </div>
   )

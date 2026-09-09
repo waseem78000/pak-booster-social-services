@@ -6,7 +6,8 @@ import {
   Zap, ShoppingCart, Shield, Clock, CreditCard,
   Star, ChevronDown, ChevronUp, Eye, Users,
   TrendingUp, Globe, Headphones, ArrowRight, Check,
-  User, Menu, X, Sun, Moon, Rocket
+  User, Menu, X, Sun, Moon, Rocket,
+  Phone, Mail, MessageCircle, Instagram, Youtube, Facebook, Twitter
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 import { theme } from '@/lib/theme'
@@ -106,6 +107,11 @@ export default function HomePage({ onLogin, onRegister, isDark, toggleTheme }: H
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [mobileMenu, setMobileMenu] = useState(false)
   const t = isDark ? theme.dark : theme.light
+
+  const [settings] = useState(() => {
+    const defaults = { adminPhone: '03479178048', adminEmail: 'Seemi78000@gmail.com', adminWhatsapp: '03479178048', instagram: '', youtube: '', facebook: '', twitter: '', telegram: '' }
+    try { const r = localStorage.getItem('pakbooster_site_settings'); return r ? { ...defaults, ...JSON.parse(r) } : defaults } catch { return defaults }
+  })
 
   return (
     <div className={`min-h-screen ${t.bg} transition-colors duration-500`}>
@@ -422,21 +428,25 @@ export default function HomePage({ onLogin, onRegister, isDark, toggleTheme }: H
               </ul>
             </div>
             <div>
-              <h4 className={`${t.text} font-bold mb-4 transition-colors`}>Company</h4>
+              <h4 className={`${t.text} font-bold mb-4 transition-colors`}>Contact Us</h4>
+              <ul className={`space-y-2.5 text-sm ${t.textSub} transition-colors`}>
+                <li className="flex items-center gap-2"><Phone className="w-4 h-4 text-emerald-400 flex-shrink-0" /> {settings.adminPhone}</li>
+                <li className="flex items-center gap-2"><Mail className="w-4 h-4 text-emerald-400 flex-shrink-0" /> {settings.adminEmail}</li>
+                {settings.adminWhatsapp && <li className="flex items-center gap-2"><MessageCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" /> WhatsApp: {settings.adminWhatsapp}</li>}
+                {settings.instagram && <li className="flex items-center gap-2"><Instagram className="w-4 h-4 text-emerald-400 flex-shrink-0" /> <a href={settings.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-500 transition-colors">Instagram</a></li>}
+                {settings.youtube && <li className="flex items-center gap-2"><Youtube className="w-4 h-4 text-emerald-400 flex-shrink-0" /> <a href={settings.youtube} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-500 transition-colors">YouTube</a></li>}
+                {settings.facebook && <li className="flex items-center gap-2"><Facebook className="w-4 h-4 text-emerald-400 flex-shrink-0" /> <a href={settings.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-500 transition-colors">Facebook</a></li>}
+                {settings.twitter && <li className="flex items-center gap-2"><Twitter className="w-4 h-4 text-emerald-400 flex-shrink-0" /> <a href={settings.twitter} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-500 transition-colors">Twitter/X</a></li>}
+                {settings.telegram && <li className="flex items-center gap-2"><MessageCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" /> <a href={settings.telegram} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-500 transition-colors">Telegram</a></li>}
+              </ul>
+            </div>
+            <div>
+              <h4 className={`${t.text} font-bold mb-4 transition-colors`}>Quick Links</h4>
               <ul className={`space-y-2.5 text-sm ${t.textSub} transition-colors`}>
                 <li className="hover:text-emerald-500 transition-colors cursor-pointer">About Us</li>
                 <li className="hover:text-emerald-500 transition-colors cursor-pointer">Terms of Service</li>
                 <li className="hover:text-emerald-500 transition-colors cursor-pointer">Privacy Policy</li>
-                <li className="hover:text-emerald-500 transition-colors cursor-pointer">Contact</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className={`${t.text} font-bold mb-4 transition-colors`}>Support</h4>
-              <ul className={`space-y-2.5 text-sm ${t.textSub} transition-colors`}>
-                <li className="hover:text-emerald-500 transition-colors cursor-pointer">Help Center</li>
                 <li className="hover:text-emerald-500 transition-colors cursor-pointer">FAQ</li>
-                <li className="hover:text-emerald-500 transition-colors cursor-pointer">Contact Us</li>
-                <li className="hover:text-emerald-500 transition-colors cursor-pointer">Live Chat</li>
               </ul>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api, formatCurrency } from '@/lib/api'
 import { Card, CardContent } from '@/components/ui/card'
-import { Users, CreditCard, ListOrdered, DollarSign, Clock, CheckCircle, TrendingUp, Wallet } from 'lucide-react'
+import { Users, CreditCard, ListOrdered, DollarSign, Clock, CheckCircle, TrendingUp, Wallet, XCircle } from 'lucide-react'
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null)
@@ -16,12 +16,13 @@ export default function AdminDashboard() {
     { label: 'Total Deposits', value: formatCurrency(stats.totalDeposits), icon: CreditCard, color: 'from-green-500 to-emerald-500' },
     { label: 'Pending Deposits', value: formatCurrency(stats.pendingDeposits), icon: Clock, color: 'from-yellow-500 to-orange-500' },
     { label: 'Approved Deposits', value: formatCurrency(stats.approvedDeposits), icon: CheckCircle, color: 'from-green-500 to-teal-500' },
+    { label: 'Rejected Deposits', value: formatCurrency(stats.rejectedDeposits || 0), icon: XCircle, color: 'from-red-500 to-pink-500' },
     { label: 'Total Orders', value: stats.totalOrders, icon: ListOrdered, color: 'from-purple-500 to-pink-500' },
     { label: 'Pending Orders', value: stats.pendingOrders, icon: Clock, color: 'from-yellow-500 to-amber-500' },
     { label: 'Processing', value: stats.processingOrders, icon: TrendingUp, color: 'from-blue-500 to-indigo-500' },
     { label: 'Completed', value: stats.completedOrders, icon: CheckCircle, color: 'from-green-500 to-emerald-500' },
     { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), icon: DollarSign, color: 'from-red-500 to-pink-500' },
-    { label: 'Wallet Activity', value: formatCurrency(stats.walletActivity), icon: Wallet, color: 'from-violet-500 to-purple-500' },
+    { label: 'Net Wallet Activity', value: formatCurrency(stats.walletActivity), icon: Wallet, color: 'from-violet-500 to-purple-500' },
   ] : []
 
   return (

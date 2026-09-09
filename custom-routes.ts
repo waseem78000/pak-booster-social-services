@@ -8,6 +8,7 @@ import { join } from 'path'
 const app = new Hono()
 const JWT_SECRET = process.env.JWT_SECRET || 'smm-panel-secret-key-2026'
 const UPLOADS_DIR = join(process.cwd(), 'uploads')
+// hot reload trigger
 
 // --- HEALTH CHECK ---
 app.get('/health', (c) => {
@@ -223,30 +224,41 @@ app.get('/admin/me', adminMiddleware, async (c) => {
 
 // --- ADMIN DASHBOARD ---
 app.get('/admin/dashboard', adminMiddleware, async (c) => {
-  const [totalUsers, totalDeposits, pendingDeposits, approvedDeposits, totalOrders, pendingOrders, processingOrders, completedOrders, totalRevenue, walletTransactions] = await Promise.all([
-    prisma.user.count(),
-    prisma.deposit.aggregate({ _sum: { amount: true } }),
-    prisma.deposit.aggregate({ _sum: { amount: true }, where: { status: 'pending' } }),
-    prisma.deposit.aggregate({ _sum: { amount: true }, where: { status: 'approved' } }),
-    prisma.order.count(),
-    prisma.order.count({ where: { status: 'pending' } }),
-    prisma.order.count({ where: { status: 'processing' } }),
-    prisma.order.count({ where: { status: 'completed' } }),
-    prisma.order.aggregate({ _sum: { amount: true }, where: { status: { in: ['completed', 'processing'] } } }),
-    prisma.walletTransaction.aggregate({ _sum: { amount: true } }),
-  ])
-  return c.json({
-    totalUsers,
-    totalDeposits: totalDeposits._sum.amount || 0,
-    pendingDeposits: pendingDeposits._sum.amount || 0,
-    approvedDeposits: approvedDeposits._sum.amount || 0,
-    totalOrders,
-    pendingOrders,
-    processingOrders,
-    completedOrders,
-    totalRevenue: totalRevenue._sum.amount || 0,
-    walletActivity: walletTransactions._sum.amount || 0,
-  })
+  try {
+    const [totalUsers, pendingDeposits, approvedDeposits, rejectedDeposits, totalOrders, pendingOrders, processingOrders, completedOrders, totalRevenue, credits, debits] = await Promise.all([
+      prisma.user.count(),
+      prisma.deposit.aggregate({ _sum: { amount: true }, where: { status: 'pending' } }),
+      prisma.deposit.aggregate({ _sum: { amount: true }, where: { status: 'approved' } }),
+      prisma.deposit.aggregate({ _sum: { amount: true }, where: { status: 'rejected' } }),
+      prisma.order.count(),
+      prisma.order.count({ where: { status: 'pending' } }),
+      prisma.order.count({ where: { status: 'processing' } }),
+      prisma.order.count({ where: { status: 'completed' } }),
+      prisma.order.aggregate({ _sum: { amount: true }, where: { status: { in: ['completed', 'processing'] } } }),
+      prisma.walletTransaction.aggregate({ _sum: { amount: true }, where: { type: 'credit' } }),
+      prisma.walletTransaction.aggregate({ _sum: { amount: true }, where: { type: 'debit' } }),
+    ])
+    const totalApprovedDeposits = approvedDeposits._sum.amount || 0
+    const totalRejectedDeposits = rejectedDeposits._sum.amount || 0
+    const totalCredits = credits._sum.amount || 0
+    const totalDebits = debits._sum.amount || 0
+    return c.json({
+      totalUsers,
+      totalDeposits: totalApprovedDeposits,
+      pendingDeposits: pendingDeposits._sum.amount || 0,
+      approvedDeposits: totalApprovedDeposits,
+      rejectedDeposits: totalRejectedDeposits,
+      totalOrders,
+      pendingOrders,
+      processingOrders,
+      completedOrders,
+      totalRevenue: totalRevenue._sum.amount || 0,
+      walletActivity: totalCredits - totalDebits,
+    })
+  } catch (e: any) {
+    console.error('[Admin Dashboard Error]', e)
+    return c.json({ error: e?.message || 'Failed to load dashboard' }, 500)
+  }
 })
 
 // --- PAYMENT SETTINGS ---
@@ -729,25 +741,158 @@ app.put('/admin/users/:id', adminMiddleware, async (c) => {
 })
 
 app.post('/admin/users/:id/adjust-balance', adminMiddleware, async (c) => {
-  const userId = c.req.param('id')
-  const { amount, type, description } = await c.req.json()
+  try {
+    const userId = c.req.param('id')
+    const { amount, type, description } = await c.req.json()
 
-  const result = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.findUnique({ where: { id: userId } })
-    if (!user) throw new Error('User not found')
-    const prevBalance = user.walletBalance
-    const newBalance = type === 'credit' ? prevBalance + Math.abs(amount) : prevBalance - Math.abs(amount)
-    if (newBalance < 0) throw new Error('Insufficient balance')
-    await tx.user.update({ where: { id: userId }, data: { walletBalance: newBalance } })
-    await tx.walletTransaction.create({
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: userId } })
+      if (!user) throw new Error('User not found')
+      const prevBalance = user.walletBalance
+      const newBalance = type === 'credit' ? prevBalance + Math.abs(amount) : prevBalance - Math.abs(amount)
+      if (newBalance < 0) throw new Error('Insufficient balance')
+      await tx.user.update({ where: { id: userId }, data: { walletBalance: newBalance } })
+      await tx.walletTransaction.create({
+        data: {
+          userId, type, amount: Math.abs(amount), previousBalance: prevBalance, newBalance,
+          description: description || `Admin ${type}`, status: 'completed'
+        }
+      })
+      return newBalance
+    })
+    return c.json({ success: true, newBalance: result })
+  } catch (e: any) {
+    console.error('[Adjust Balance Error]', e)
+    return c.json({ error: e?.message || 'Failed to adjust balance' }, 500)
+  }
+})
+
+// --- BACKUP & RESTORE ---
+app.get('/admin/backup/export', adminMiddleware, async (c) => {
+  try {
+    const [users, adminUsers, paymentSettings, services, deposits, orders, walletTransactions, notifications, supportTickets, plans, userPlans] = await Promise.all([
+      prisma.user.findMany(),
+      prisma.adminUser.findMany(),
+      prisma.paymentSettings.findMany(),
+      prisma.service.findMany(),
+      prisma.deposit.findMany(),
+      prisma.order.findMany(),
+      prisma.walletTransaction.findMany(),
+      prisma.notification.findMany(),
+      prisma.supportTicket.findMany(),
+      prisma.plan.findMany(),
+      prisma.userPlan.findMany(),
+    ])
+    const backup = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      counts: {
+        users: users.length,
+        adminUsers: adminUsers.length,
+        services: services.length,
+        deposits: deposits.length,
+        orders: orders.length,
+        walletTransactions: walletTransactions.length,
+        notifications: notifications.length,
+        supportTickets: supportTickets.length,
+        plans: plans.length,
+        userPlans: userPlans.length,
+      },
       data: {
-        userId, type, amount: Math.abs(amount), previousBalance, newBalance,
-        description: description || `Admin ${type}`, status: 'completed'
+        users,
+        adminUsers,
+        paymentSettings,
+        services,
+        deposits,
+        orders,
+        walletTransactions,
+        notifications,
+        supportTickets,
+        plans,
+        userPlans,
+      }
+    }
+    return c.json(backup)
+  } catch (e: any) {
+    console.error('[Backup Export Error]', e)
+    return c.json({ error: e?.message || 'Failed to export backup' }, 500)
+  }
+})
+
+app.post('/admin/backup/import', adminMiddleware, async (c) => {
+  try {
+    const backup = await c.req.json()
+    if (!backup?.data) return c.json({ error: 'Invalid backup file format' }, 400)
+
+    const { data } = backup
+    const results: Record<string, number> = {}
+
+    await prisma.$transaction(async (tx) => {
+      // Delete in reverse dependency order
+      await tx.userPlan.deleteMany()
+      await tx.walletTransaction.deleteMany()
+      await tx.notification.deleteMany()
+      await tx.order.deleteMany()
+      await tx.deposit.deleteMany()
+      await tx.supportTicket.deleteMany()
+      await tx.user.deleteMany()
+      await tx.adminUser.deleteMany()
+      await tx.service.deleteMany()
+      await tx.plan.deleteMany()
+      await tx.paymentSettings.deleteMany()
+
+      // Insert in dependency order
+      if (data.services?.length) {
+        await tx.service.createMany({ data: data.services.map((s: any) => ({ ...s, createdAt: s.createdAt ? new Date(s.createdAt) : undefined })) })
+        results.services = data.services.length
+      }
+      if (data.plans?.length) {
+        await tx.plan.createMany({ data: data.plans.map((p: any) => ({ ...p, createdAt: p.createdAt ? new Date(p.createdAt) : undefined })) })
+        results.plans = data.plans.length
+      }
+      if (data.paymentSettings?.length) {
+        await tx.paymentSettings.createMany({ data: data.paymentSettings.map((ps: any) => ({ ...ps, updatedAt: ps.updatedAt ? new Date(ps.updatedAt) : undefined })) })
+        results.paymentSettings = data.paymentSettings.length
+      }
+      if (data.users?.length) {
+        await tx.user.createMany({ data: data.users.map((u: any) => ({ ...u, createdAt: u.createdAt ? new Date(u.createdAt) : undefined, updatedAt: u.updatedAt ? new Date(u.updatedAt) : undefined })) })
+        results.users = data.users.length
+      }
+      if (data.adminUsers?.length) {
+        await tx.adminUser.createMany({ data: data.adminUsers.map((a: any) => ({ ...a, createdAt: a.createdAt ? new Date(a.createdAt) : undefined })) })
+        results.adminUsers = data.adminUsers.length
+      }
+      if (data.deposits?.length) {
+        await tx.deposit.createMany({ data: data.deposits.map((d: any) => ({ ...d, createdAt: d.createdAt ? new Date(d.createdAt) : undefined, reviewedAt: d.reviewedAt ? new Date(d.reviewedAt) : undefined })) })
+        results.deposits = data.deposits.length
+      }
+      if (data.orders?.length) {
+        await tx.order.createMany({ data: data.orders.map((o: any) => ({ ...o, createdAt: o.createdAt ? new Date(o.createdAt) : undefined, completedAt: o.completedAt ? new Date(o.completedAt) : undefined })) })
+        results.orders = data.orders.length
+      }
+      if (data.supportTickets?.length) {
+        await tx.supportTicket.createMany({ data: data.supportTickets.map((st: any) => ({ ...st, createdAt: st.createdAt ? new Date(st.createdAt) : undefined, updatedAt: st.updatedAt ? new Date(st.updatedAt) : undefined })) })
+        results.supportTickets = data.supportTickets.length
+      }
+      if (data.walletTransactions?.length) {
+        await tx.walletTransaction.createMany({ data: data.walletTransactions.map((w: any) => ({ ...w, createdAt: w.createdAt ? new Date(w.createdAt) : undefined })) })
+        results.walletTransactions = data.walletTransactions.length
+      }
+      if (data.notifications?.length) {
+        await tx.notification.createMany({ data: data.notifications.map((n: any) => ({ ...n, createdAt: n.createdAt ? new Date(n.createdAt) : undefined })) })
+        results.notifications = data.notifications.length
+      }
+      if (data.userPlans?.length) {
+        await tx.userPlan.createMany({ data: data.userPlans.map((up: any) => ({ ...up, createdAt: up.createdAt ? new Date(up.createdAt) : undefined, startDate: up.startDate ? new Date(up.startDate) : undefined, endDate: up.endDate ? new Date(up.endDate) : undefined })) })
+        results.userPlans = data.userPlans.length
       }
     })
-    return newBalance
-  })
-  return c.json({ success: true, newBalance: result })
+
+    return c.json({ success: true, message: 'Backup restored successfully', results })
+  } catch (e: any) {
+    console.error('[Backup Import Error]', e)
+    return c.json({ error: e?.message || 'Failed to restore backup' }, 500)
+  }
 })
 
 // --- SEED DEFAULT DATA ---

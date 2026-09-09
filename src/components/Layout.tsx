@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   LayoutDashboard, ShoppingCart, Plus, CreditCard, ListOrdered, Wallet,
   Bell, UserCircle, LogOut, Settings, Users, FileText, MessageSquare,
-  Menu, X, ChevronDown, Zap, BarChart3, Headphones, Tag, Sun, Moon
+  Menu, X, ChevronDown, Zap, BarChart3, Headphones, Tag, Sun, Moon, Shield
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 import { theme } from '@/lib/theme'
@@ -69,6 +69,7 @@ export default function Layout({ children, currentPage, onNavigate, onLogout, us
     { id: 'admin-transactions', label: 'Transactions', icon: Wallet },
     { id: 'admin-tickets', label: 'Support Tickets', icon: MessageSquare },
     { id: 'admin-notifications', label: 'Notifications', icon: Bell },
+    { id: 'admin-backup', label: 'Backup & Restore', icon: Shield },
   ]
 
   const menuItems: MenuItem[] = isAdmin ? adminMenuItems : userMenuItems

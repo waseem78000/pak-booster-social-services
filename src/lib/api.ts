@@ -101,6 +101,10 @@ export const api = {
   getAdminUser: (id: string) => request(`/admin/users/${id}`),
   updateAdminUser: (id: string, d: any) => request(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
   adjustBalance: (id: string, d: { amount: number; type: string; description?: string }) => request(`/admin/users/${id}/adjust-balance`, { method: 'POST', body: JSON.stringify(d) }),
+
+  // Backup
+  exportBackup: () => request('/admin/backup/export'),
+  importBackup: (data: any) => request('/admin/backup/import', { method: 'POST', body: JSON.stringify(data) }),
 }
 
 export function formatCurrency(amount: number) {

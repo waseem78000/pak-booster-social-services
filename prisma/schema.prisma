@@ -196,3 +196,21 @@ model UserPlan {
   @@unique([userId, planId])
   @@map("user_plans")
 }
+
+model SiteSettings {
+  id            String   @id @default(cuid())
+  siteName      String   @default("PAK BOOSTER") @map("site_name")
+  siteTagline   String?  @map("site_tagline")
+  adminName     String?  @map("admin_name")
+  adminPhone    String?  @map("admin_phone")
+  adminEmail    String?  @map("admin_email")
+  adminWhatsapp String?  @map("admin_whatsapp")
+  instagram     String?  @default("")
+  youtube       String?  @default("")
+  facebook      String?  @default("")
+  twitter       String?  @default("")
+  telegram      String?  @default("")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}

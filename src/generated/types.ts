@@ -147,6 +147,22 @@ export interface UserPlanType {
   createdAt: Date
 }
 
+export interface SiteSettingsType {
+  id: string
+  siteName: string
+  siteTagline?: string
+  adminName?: string
+  adminPhone?: string
+  adminEmail?: string
+  adminWhatsapp?: string
+  instagram?: string
+  youtube?: string
+  facebook?: string
+  twitter?: string
+  telegram?: string
+  updatedAt: Date
+}
+
 // ============================================================================
 // Input Types
 // ============================================================================
@@ -375,6 +391,34 @@ export interface UserPlanUpdateInput {
   endDate?: Date
 }
 
+export interface SiteSettingsCreateInput {
+  siteName?: string
+  siteTagline?: string
+  adminName?: string
+  adminPhone?: string
+  adminEmail?: string
+  adminWhatsapp?: string
+  instagram?: string
+  youtube?: string
+  facebook?: string
+  twitter?: string
+  telegram?: string
+}
+
+export interface SiteSettingsUpdateInput {
+  siteName?: string
+  siteTagline?: string
+  adminName?: string
+  adminPhone?: string
+  adminEmail?: string
+  adminWhatsapp?: string
+  instagram?: string
+  youtube?: string
+  facebook?: string
+  twitter?: string
+  telegram?: string
+}
+
 // ============================================================================
 // Hook Types
 // ============================================================================
@@ -423,4 +467,5 @@ export interface ServerFunctionHooks {
   SupportTicket?: ModelHooks<SupportTicketCreateInput, SupportTicketUpdateInput, SupportTicketType>
   Plan?: ModelHooks<PlanCreateInput, PlanUpdateInput, PlanType>
   UserPlan?: ModelHooks<UserPlanCreateInput, UserPlanUpdateInput, UserPlanType>
+  SiteSettings?: ModelHooks<SiteSettingsCreateInput, SiteSettingsUpdateInput, SiteSettingsType>
 }

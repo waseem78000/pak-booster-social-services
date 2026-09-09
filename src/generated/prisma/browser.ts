@@ -72,3 +72,8 @@ export type Plan = Prisma.PlanModel
  * 
  */
 export type UserPlan = Prisma.UserPlanModel
+/**
+ * Model SiteSettings
+ * 
+ */
+export type SiteSettings = Prisma.SiteSettingsModel

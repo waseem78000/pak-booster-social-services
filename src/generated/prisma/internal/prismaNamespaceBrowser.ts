@@ -61,7 +61,8 @@ export const ModelName = {
   Notification: 'Notification',
   SupportTicket: 'SupportTicket',
   Plan: 'Plan',
-  UserPlan: 'UserPlan'
+  UserPlan: 'UserPlan',
+  SiteSettings: 'SiteSettings'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -244,6 +245,25 @@ export const UserPlanScalarFieldEnum = {
 } as const
 
 export type UserPlanScalarFieldEnum = (typeof UserPlanScalarFieldEnum)[keyof typeof UserPlanScalarFieldEnum]
+
+
+export const SiteSettingsScalarFieldEnum = {
+  id: 'id',
+  siteName: 'siteName',
+  siteTagline: 'siteTagline',
+  adminName: 'adminName',
+  adminPhone: 'adminPhone',
+  adminEmail: 'adminEmail',
+  adminWhatsapp: 'adminWhatsapp',
+  instagram: 'instagram',
+  youtube: 'youtube',
+  facebook: 'facebook',
+  twitter: 'twitter',
+  telegram: 'telegram',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SiteSettingsScalarFieldEnum = (typeof SiteSettingsScalarFieldEnum)[keyof typeof SiteSettingsScalarFieldEnum]
 
 
 export const SortOrder = {

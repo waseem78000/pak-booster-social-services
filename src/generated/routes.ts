@@ -21,6 +21,7 @@ import { createNotificationRoutes, setPrisma as setPrismaNotification, setNotifi
 import { createSupportTicketRoutes, setPrisma as setPrismaSupportTicket, setSupportTicketHooks } from "./support-ticket.routes"
 import { createPlanRoutes, setPrisma as setPrismaPlan, setPlanHooks } from "./plan.routes"
 import { createUserPlanRoutes, setPrisma as setPrismaUserPlan, setUserPlanHooks } from "./user-plan.routes"
+import { createSiteSettingsRoutes, setPrisma as setPrismaSiteSettings, setSiteSettingsHooks } from "./site-settings.routes"
 
 // Hook imports
 import { userHooks } from "./user.hooks"
@@ -34,6 +35,7 @@ import { notificationHooks } from "./notification.hooks"
 import { supportTicketHooks } from "./support-ticket.hooks"
 import { planHooks } from "./plan.hooks"
 import { userPlanHooks } from "./user-plan.hooks"
+import { siteSettingsHooks } from "./site-settings.hooks"
 
 // Re-export route creators and setters
 export {
@@ -69,7 +71,10 @@ export {
   setPlanHooks,
   createUserPlanRoutes,
   setPrismaUserPlan,
-  setUserPlanHooks
+  setUserPlanHooks,
+  createSiteSettingsRoutes,
+  setPrismaSiteSettings,
+  setSiteSettingsHooks
 }
 
 // Re-export hooks (model-specific)
@@ -84,7 +89,8 @@ export {
   notificationHooks,
   supportTicketHooks,
   planHooks,
-  userPlanHooks
+  userPlanHooks,
+  siteSettingsHooks
 }
 
 // Re-export hook types
@@ -99,6 +105,7 @@ export type { NotificationHooks } from "./notification.hooks"
 export type { SupportTicketHooks } from "./support-ticket.hooks"
 export type { PlanHooks } from "./plan.hooks"
 export type { UserPlanHooks } from "./user-plan.hooks"
+export type { SiteSettingsHooks } from "./site-settings.hooks"
 
 /**
  * Create all routes and mount them on a single Hono app
@@ -118,6 +125,7 @@ export function createAllRoutes(prisma: PrismaClient): Hono {
   setPrismaSupportTicket(prisma)
   setPrismaPlan(prisma)
   setPrismaUserPlan(prisma)
+  setPrismaSiteSettings(prisma)
 
   // Set hooks for all routes
   setUserHooks(userHooks)
@@ -131,6 +139,7 @@ export function createAllRoutes(prisma: PrismaClient): Hono {
   setSupportTicketHooks(supportTicketHooks)
   setPlanHooks(planHooks)
   setUserPlanHooks(userPlanHooks)
+  setSiteSettingsHooks(siteSettingsHooks)
 
   // Mount routes
   app.route("/users", createUserRoutes())
@@ -144,6 +153,7 @@ export function createAllRoutes(prisma: PrismaClient): Hono {
   app.route("/support-tickets", createSupportTicketRoutes())
   app.route("/plans", createPlanRoutes())
   app.route("/user-plans", createUserPlanRoutes())
+  app.route("/site-settingses", createSiteSettingsRoutes())
 
   return app
 }

@@ -23,6 +23,7 @@ import AdminTransactions from '@/components/AdminTransactions'
 import AdminTickets from '@/components/AdminTickets'
 import AdminNotifications from '@/components/AdminNotifications'
 import AdminBackup from '@/components/AdminBackup'
+import AdminSettings from '@/components/AdminSettings'
 import HomePage from '@/components/HomePage'
 import { theme } from '@/lib/theme'
 
@@ -129,6 +130,7 @@ export default function App() {
         {page === 'admin-tickets' && <AdminTickets />}
         {page === 'admin-notifications' && <AdminNotifications />}
         {page === 'admin-backup' && <AdminBackup isDark={isDark} />}
+        {page === 'admin-settings' && <AdminSettings />}
       </Layout>
     )
   }

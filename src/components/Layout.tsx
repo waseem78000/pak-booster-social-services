@@ -8,6 +8,7 @@ import {
   Menu, X, ChevronDown, Zap, BarChart3, Headphones, Tag, Sun, Moon, Shield
 } from 'lucide-react'
 import Logo from '@/components/Logo'
+import Footer from '@/components/Footer'
 import { theme } from '@/lib/theme'
 
 interface LayoutProps {
@@ -70,6 +71,7 @@ export default function Layout({ children, currentPage, onNavigate, onLogout, us
     { id: 'admin-tickets', label: 'Support Tickets', icon: MessageSquare },
     { id: 'admin-notifications', label: 'Notifications', icon: Bell },
     { id: 'admin-backup', label: 'Backup & Restore', icon: Shield },
+    { id: 'admin-settings', label: 'Admin Settings', icon: Settings },
   ]
 
   const menuItems: MenuItem[] = isAdmin ? adminMenuItems : userMenuItems
@@ -152,6 +154,8 @@ export default function Layout({ children, currentPage, onNavigate, onLogout, us
         <main className="p-4 lg:p-6">
           {children}
         </main>
+
+        {!isAdmin && <Footer isDark={isDark} />}
       </div>
     </div>
   )

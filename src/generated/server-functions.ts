@@ -42,6 +42,9 @@ import type {
   UserPlanType,
   UserPlanCreateInput,
   UserPlanUpdateInput,
+  SiteSettingsType,
+  SiteSettingsCreateInput,
+  SiteSettingsUpdateInput,
 } from './types'
 
 /** Get the API base URL */
@@ -1049,6 +1052,97 @@ export async function deleteUserPlan(args: { data: { id: string; userId?: string
   if (!response.ok) {
     const err = await response.json().catch(() => ({ error: { message: response.statusText } }))
     throw new Error(err.error?.message || 'Failed to delete UserPlan')
+  }
+  return { success: true }
+}
+
+// ============================================================================
+// SiteSettings Client Functions
+// ============================================================================
+
+/**
+ * List all SiteSettings records
+ */
+export async function getSiteSettingsList(args: { data: { userId?: string; where?: Record<string, unknown> } }): Promise<SiteSettingsType[]> {
+  const params = new URLSearchParams()
+  if (args.data.userId) params.set('userId', args.data.userId)
+  if (args.data.where) {
+    for (const [key, value] of Object.entries(args.data.where)) {
+      if (value !== undefined && value !== null) params.set(key, String(value))
+    }
+  }
+  const qs = params.toString()
+  const url = `${getApiBase()}/api/site-settingses${qs ? `?${qs}` : ''}`
+  const response = await fetch(url)
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: { message: response.statusText } }))
+    throw new Error(err.error?.message || 'Failed to list SiteSettings')
+  }
+  const json = await response.json()
+  return (json.items || []) as SiteSettingsType[]
+}
+
+/**
+ * Get a single SiteSettings by ID
+ */
+export async function getSiteSettingsById(args: { data: { id: string; userId?: string } }): Promise<SiteSettingsType> {
+  const url = `${getApiBase()}/api/site-settingses/${args.data.id}`
+  const response = await fetch(url)
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: { message: response.statusText } }))
+    throw new Error(err.error?.message || 'SiteSettings not found')
+  }
+  const json = await response.json()
+  return json.data as SiteSettingsType
+}
+
+/**
+ * Create a new SiteSettings
+ */
+export async function createSiteSettings(args: { data: { input: SiteSettingsCreateInput; userId?: string } }): Promise<SiteSettingsType> {
+  const url = `${getApiBase()}/api/site-settingses`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(args.data.input),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: { message: response.statusText } }))
+    throw new Error(err.error?.message || 'Failed to create SiteSettings')
+  }
+  const json = await response.json()
+  return json.data as SiteSettingsType
+}
+
+/**
+ * Update an existing SiteSettings
+ */
+export async function updateSiteSettings(args: { data: { id: string; input: SiteSettingsUpdateInput; userId?: string } }): Promise<SiteSettingsType> {
+  const url = `${getApiBase()}/api/site-settingses/${args.data.id}`
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(args.data.input),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: { message: response.statusText } }))
+    throw new Error(err.error?.message || 'Failed to update SiteSettings')
+  }
+  const json = await response.json()
+  return json.data as SiteSettingsType
+}
+
+/**
+ * Delete a SiteSettings
+ */
+export async function deleteSiteSettings(args: { data: { id: string; userId?: string } }): Promise<{ success: boolean }> {
+  const url = `${getApiBase()}/api/site-settingses/${args.data.id}`
+  const response = await fetch(url, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: { message: response.statusText } }))
+    throw new Error(err.error?.message || 'Failed to delete SiteSettings')
   }
   return { success: true }
 }

@@ -8,7 +8,7 @@ import { join } from 'path'
 const app = new Hono()
 const JWT_SECRET = process.env.JWT_SECRET || 'smm-panel-secret-key-2026'
 const UPLOADS_DIR = join(process.cwd(), 'uploads')
-// hot reload trigger
+// hot reload trigger 2
 
 // --- HEALTH CHECK ---
 app.get('/health', (c) => {
@@ -26,6 +26,13 @@ const seedOnce = async () => {
         data: { username: 'admin', email: 'admin@smmpanel.com', passwordHash: adminHash, role: 'superadmin' }
       })
       await prisma.paymentSettings.create({ data: {} })
+    }
+    const siteSettingsExist = await prisma.siteSettings.findFirst()
+    if (!siteSettingsExist) {
+      await prisma.siteSettings.create({
+        data: { adminName: 'Waseem Abbas', adminPhone: '03479178048', adminEmail: '', siteName: 'PAK BOOSTER', siteTagline: 'Social Services' }
+      })
+      console.log('✅ Seeded site settings')
     }
     const serviceCount = await prisma.service.count()
     if (serviceCount < 10) {
@@ -954,6 +961,82 @@ app.post('/admin/seed', async (c) => {
   }
 
   return c.json({ message: 'Seeded successfully', admin: { username: 'admin', password: adminPassword || 'admin123' } })
+})
+
+// --- SITE SETTINGS (Public read, Admin write) ---
+app.get('/site-settings', async (c) => {
+  try {
+    const rows = await prisma.$queryRaw`SELECT * FROM site_settings LIMIT 1` as any[]
+    if (rows && rows.length > 0) {
+      return c.json({ settings: rows[0] })
+    }
+    // Create default settings
+    await prisma.$executeRaw`INSERT OR IGNORE INTO site_settings (id, site_name, site_tagline, admin_name, admin_phone, admin_email, admin_whatsapp, instagram, youtube, facebook, twitter, telegram, updated_at) VALUES ('default', 'PAK BOOSTER', 'Social Services', 'Waseem Abbas', '03479178048', '', '', '', '', '', '', '', datetime('now'))`
+    const rows2 = await prisma.$queryRaw`SELECT * FROM site_settings LIMIT 1` as any[]
+    return c.json({ settings: rows2?.[0] || { siteName: 'PAK BOOSTER', siteTagline: 'Social Services', adminName: 'Waseem Abbas', adminPhone: '03479178048' } })
+  } catch (e: any) {
+    console.error('[Site Settings GET Error]', e.message)
+    return c.json({ settings: { siteName: 'PAK BOOSTER', siteTagline: 'Social Services', adminName: 'Waseem Abbas', adminPhone: '03479178048', adminEmail: '', adminWhatsapp: '', instagram: '', youtube: '', facebook: '', twitter: '', telegram: '' } })
+  }
+})
+
+app.put('/admin/site-settings', adminMiddleware, async (c) => {
+  try {
+    const data = await c.req.json()
+    const existing = await prisma.$queryRaw`SELECT id FROM site_settings LIMIT 1` as any[]
+    if (existing && existing.length > 0) {
+      await prisma.$executeRaw`UPDATE site_settings SET site_name=${data.siteName || 'PAK BOOSTER'}, site_tagline=${data.siteTagline || ''}, admin_name=${data.adminName || ''}, admin_phone=${data.adminPhone || ''}, admin_email=${data.adminEmail || ''}, admin_whatsapp=${data.adminWhatsapp || ''}, instagram=${data.instagram || ''}, youtube=${data.youtube || ''}, facebook=${data.facebook || ''}, twitter=${data.twitter || ''}, telegram=${data.telegram || ''}, updated_at=datetime('now') WHERE id=${existing[0].id}`
+    } else {
+      await prisma.$executeRaw`INSERT INTO site_settings (id, site_name, site_tagline, admin_name, admin_phone, admin_email, admin_whatsapp, instagram, youtube, facebook, twitter, telegram, updated_at) VALUES ('default', ${data.siteName || 'PAK BOOSTER'}, ${data.siteTagline || ''}, ${data.adminName || ''}, ${data.adminPhone || ''}, ${data.adminEmail || ''}, ${data.adminWhatsapp || ''}, ${data.instagram || ''}, ${data.youtube || ''}, ${data.facebook || ''}, ${data.twitter || ''}, ${data.telegram || ''}, datetime('now'))`
+    }
+    const updated = await prisma.$queryRaw`SELECT * FROM site_settings LIMIT 1` as any[]
+    return c.json({ settings: updated?.[0] || data })
+  } catch (e: any) {
+    console.error('[Site Settings PUT Error]', e.message)
+    return c.json({ error: e?.message || 'Failed to update settings' }, 500)
+  }
+})
+
+// --- ADMIN CREDENTIAL UPDATE ---
+app.put('/admin/change-credentials', adminMiddleware, async (c) => {
+  try {
+    const adminId = c.get('adminId')
+    const { currentPassword, newUsername, newPassword, email } = await c.req.json()
+    const admin = await prisma.adminUser.findUnique({ where: { id: adminId } })
+    if (!admin) return c.json({ error: 'Admin not found' }, 404)
+
+    if (currentPassword) {
+      const valid = await bcrypt.compare(currentPassword, admin.passwordHash)
+      if (!valid) return c.json({ error: 'Current password is incorrect' }, 400)
+    }
+
+    const updateData: any = {}
+    if (newUsername && newUsername !== admin.username) {
+      const exists = await prisma.adminUser.findFirst({ where: { username: newUsername, id: { not: adminId } } })
+      if (exists) return c.json({ error: 'Username already taken' }, 409)
+      updateData.username = newUsername
+    }
+    if (newPassword) {
+      updateData.passwordHash = await bcrypt.hash(newPassword, 12)
+    }
+    if (email) {
+      updateData.email = email
+    }
+
+    if (Object.keys(updateData).length === 0) return c.json({ error: 'Nothing to update' }, 400)
+
+    const updated = await prisma.adminUser.update({ where: { id: adminId }, data: updateData })
+
+    // If credentials changed, issue new token
+    const newToken = jwt.sign({ adminId: updated.id, isAdmin: true }, JWT_SECRET, { expiresIn: '30d' })
+    return c.json({
+      success: true,
+      token: newToken,
+      admin: { id: updated.id, username: updated.username, email: updated.email, role: updated.role }
+    })
+  } catch (e: any) {
+    return c.json({ error: e?.message || 'Failed to update credentials' }, 500)
+  }
 })
 
 export default app

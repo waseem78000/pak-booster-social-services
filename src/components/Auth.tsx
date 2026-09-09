@@ -8,13 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { User, Lock, Mail, Eye, EyeOff } from 'lucide-react'
 
 interface AuthProps {
-  onAuth: (token: string, user: any) => void
-  mode?: 'user' | 'admin'
-  onSwitchMode?: () => void
+  onAuth: (token: string, user: any, role?: 'user' | 'admin') => void
   onBack?: () => void
 }
 
-export default function Auth({ onAuth, mode = 'user', onSwitchMode, onBack }: AuthProps) {
+export default function Auth({ onAuth, onBack }: AuthProps) {
   const [tab, setTab] = useState('login')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -26,29 +24,34 @@ export default function Auth({ onAuth, mode = 'user', onSwitchMode, onBack }: Au
     setError('')
     setLoading(true)
     try {
-      if (mode === 'admin') {
-        // Check localStorage first, fallback to server
-        let adminCreds = { username: 'admin', password: 'admin123', email: 'seemi78000@gmail.com' }
-        try {
-          const raw = localStorage.getItem('pakbooster_admin_creds')
-          if (raw) adminCreds = { ...adminCreds, ...JSON.parse(raw) }
-        } catch {}
+      // Check admin credentials from localStorage
+      let adminCreds = { username: 'admin', password: 'admin123', email: 'seemi78000@gmail.com' }
+      try {
+        const raw = localStorage.getItem('pakbooster_admin_creds')
+        if (raw) adminCreds = { ...adminCreds, ...JSON.parse(raw) }
+      } catch {}
 
-        if (form.email === adminCreds.username && form.password === adminCreds.password) {
+      const isEmail = form.email.includes('@')
+
+      // Admin check: email match OR username match
+      if (tab === 'login' && ((isEmail && form.email === adminCreds.email) || (!isEmail && form.email === adminCreds.username))) {
+        if (form.password === adminCreds.password) {
           const token = 'admin_token_' + Date.now()
           localStorage.setItem('smm_admin_token', token)
-          onAuth(token, { username: adminCreds.username, email: adminCreds.email, role: 'admin' })
-        } else {
-          throw new Error('Invalid admin credentials')
+          onAuth(token, { username: adminCreds.username, email: adminCreds.email, role: 'admin' }, 'admin')
+          return
         }
-      } else if (tab === 'login') {
+      }
+
+      // Normal user login
+      if (tab === 'login') {
         const data = await api.login({ email: form.email, password: form.password })
         localStorage.setItem('smm_token', data.token)
-        onAuth(data.token, data.user)
+        onAuth(data.token, data.user, 'user')
       } else {
         const data = await api.register({ email: form.email, username: form.username, password: form.password, name: form.name })
         localStorage.setItem('smm_token', data.token)
-        onAuth(data.token, data.user)
+        onAuth(data.token, data.user, 'user')
       }
     } catch (e: any) {
       setError(e.message || 'Authentication failed')
@@ -59,7 +62,6 @@ export default function Auth({ onAuth, mode = 'user', onSwitchMode, onBack }: Au
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0f1a] p-4 relative overflow-hidden">
-      {/* Background effects */}
       <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/20 via-[#0a0f1a] to-teal-900/20" />
       <div className="absolute top-20 left-1/4 w-72 h-72 bg-emerald-500/8 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-1/4 w-96 h-96 bg-teal-500/8 rounded-full blur-3xl" />
@@ -67,7 +69,6 @@ export default function Auth({ onAuth, mode = 'user', onSwitchMode, onBack }: Au
 
       <div className="w-full max-w-md relative">
         <div className="text-center mb-8">
-          {/* Pakistan Crescent Star Logo */}
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 mb-4 shadow-xl shadow-emerald-500/25">
             <svg width="36" height="36" viewBox="0 0 52 52" fill="none">
               <circle cx="28" cy="26" r="12" fill="white" />
@@ -88,21 +89,19 @@ export default function Auth({ onAuth, mode = 'user', onSwitchMode, onBack }: Au
         <Card className="bg-[#111b2e]/80 backdrop-blur-xl border-[#1a2744] shadow-2xl shadow-emerald-500/5">
           <CardHeader>
             <CardTitle className="text-white text-center">
-              {mode === 'admin' ? 'Admin Panel' : tab === 'login' ? 'Welcome Back' : 'Create Account'}
+              {tab === 'login' ? 'Welcome Back' : 'Create Account'}
             </CardTitle>
             <CardDescription className="text-slate-400 text-center">
-              {mode === 'admin' ? 'Sign in to admin dashboard' : tab === 'login' ? 'Sign in to your account' : 'Join thousands of customers'}
+              {tab === 'login' ? 'Sign in with your email or username' : 'Join thousands of customers'}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {mode !== 'admin' && (
-              <Tabs value={tab} onValueChange={setTab} className="mb-6">
-                <TabsList className="grid w-full grid-cols-2 bg-[#162032]">
-                  <TabsTrigger value="login" className="text-slate-400 data-[state=active]:bg-emerald-500 data-[state=active]:text-white font-medium">Login</TabsTrigger>
-                  <TabsTrigger value="register" className="text-slate-400 data-[state=active]:bg-emerald-500 data-[state=active]:text-white font-medium">Register</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            )}
+            <Tabs value={tab} onValueChange={setTab} className="mb-6">
+              <TabsList className="grid w-full grid-cols-2 bg-[#162032]">
+                <TabsTrigger value="login" className="text-slate-400 data-[state=active]:bg-emerald-500 data-[state=active]:text-white font-medium">Login</TabsTrigger>
+                <TabsTrigger value="register" className="text-slate-400 data-[state=active]:bg-emerald-500 data-[state=active]:text-white font-medium">Register</TabsTrigger>
+              </TabsList>
+            </Tabs>
 
             {error && (
               <div className="mb-4 p-3 rounded-xl bg-red-500/15 border border-red-500/25 text-red-300 text-sm font-medium">
@@ -111,7 +110,7 @@ export default function Auth({ onAuth, mode = 'user', onSwitchMode, onBack }: Au
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {tab === 'register' && mode !== 'admin' && (
+              {tab === 'register' && (
                 <>
                   <div>
                     <Label className="text-slate-300 font-medium">Full Name</Label>
@@ -141,12 +140,11 @@ export default function Auth({ onAuth, mode = 'user', onSwitchMode, onBack }: Au
               )}
 
               <div>
-                <Label className="text-slate-300 font-medium">{mode === 'admin' ? 'Username' : 'Email'}</Label>
+                <Label className="text-slate-300 font-medium">Email or Username</Label>
                 <div className="relative mt-1.5">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <Input
-                    placeholder={mode === 'admin' ? 'admin' : 'you@example.com'}
-                    type={mode === 'admin' ? 'text' : 'email'}
+                    placeholder="you@example.com or username"
                     value={form.email}
                     onChange={e => setForm({ ...form, email: e.target.value })}
                     className="pl-10 bg-[#111b2e] border-[#1a2744] text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/20"
@@ -172,25 +170,15 @@ export default function Auth({ onAuth, mode = 'user', onSwitchMode, onBack }: Au
               </div>
 
               <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-emerald-500/25 transition-all">
-                {loading ? 'Please wait...' : mode === 'admin' ? 'Sign In' : tab === 'login' ? 'Sign In' : 'Create Account'}
+                {loading ? 'Please wait...' : tab === 'login' ? 'Sign In' : 'Create Account'}
               </Button>
             </form>
 
-            {onSwitchMode && mode !== 'admin' && (
-              <div className="mt-4 text-center">
-                <button onClick={onSwitchMode} className="text-emerald-300 hover:text-white text-sm underline transition-colors">
-                  Switch to Admin Login
-                </button>
-              </div>
-            )}
-            {mode === 'admin' && (
-              <div className="mt-4 text-center">
-                <div className="flex items-center justify-center gap-2 text-amber-400/80 text-xs">
-                  <Lock className="w-3 h-3" />
-                  <span>Admin access only — unauthorized attempts are logged</span>
-                </div>
-              </div>
-            )}
+            <div className="mt-4 text-center">
+              <p className="text-slate-500 text-xs">
+                Admin? Use admin email/username + password to login
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

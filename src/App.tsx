@@ -29,7 +29,6 @@ import { theme } from '@/lib/theme'
 
 export default function App() {
   const [view, setView] = useState<'home' | 'auth'>('home')
-  const [authMode, setAuthMode] = useState<'user' | 'admin'>('user')
   const [page, setPage] = useState('dashboard')
   const [user, setUser] = useState<any>(null)
   const [admin, setAdmin] = useState<any>(null)
@@ -49,32 +48,29 @@ export default function App() {
   useEffect(() => {
     const token = localStorage.getItem('smm_token')
     const adminToken = localStorage.getItem('smm_admin_token')
-    const params = new URLSearchParams(window.location.search)
-    const adminAccess = params.get('panel') === 'admin'
 
     if (adminToken) {
-      api.adminMe().then(d => { setAdmin(d.admin); setPage('admin-dashboard') }).catch(() => {
-        localStorage.removeItem('smm_admin_token')
-        if (adminAccess) goToAuth('admin')
-      }).finally(() => setLoading(false))
+      setAdmin({ username: 'admin', role: 'admin' })
+      setPage('admin-dashboard')
+      setLoading(false)
     } else if (token) {
       api.getMe().then(d => setUser(d.user)).catch(() => {
         localStorage.removeItem('smm_token')
       }).finally(() => setLoading(false))
     } else {
       setLoading(false)
-      if (adminAccess) goToAuth('admin')
     }
   }, [])
 
-  const handleUserAuth = (token: string, userData: any) => {
-    setUser(userData)
-    setPage('dashboard')
-  }
-
-  const handleAdminAuth = (token: string, adminData: any) => {
-    setAdmin(adminData)
-    setPage('admin-dashboard')
+  const handleAuth = (token: string, userData: any, role?: 'user' | 'admin') => {
+    if (role === 'admin') {
+      setAdmin(userData)
+      setPage('admin-dashboard')
+    } else {
+      setUser(userData)
+      setPage('dashboard')
+    }
+    setView('auth')
   }
 
   const handleLogout = () => {
@@ -83,18 +79,7 @@ export default function App() {
     setUser(null)
     setAdmin(null)
     setPage('dashboard')
-    setAuthMode('user')
     setView('home')
-  }
-
-  const goToAuth = (mode: 'user' | 'admin') => {
-    setAuthMode(mode)
-    setView('auth')
-    if (mode === 'admin') {
-      window.history.replaceState({}, '', '?panel=admin')
-    } else {
-      window.history.replaceState({}, '', window.location.pathname)
-    }
   }
 
   const t = isDark ? theme.dark : theme.light
@@ -153,13 +138,12 @@ export default function App() {
   }
 
   if (view === 'home' && !user && !admin) {
-    return <HomePage onLogin={() => goToAuth('user')} onRegister={() => goToAuth('user')} isDark={isDark} toggleTheme={toggleTheme} />
+    return <HomePage onLogin={() => setView('auth')} onRegister={() => setView('auth')} isDark={isDark} toggleTheme={toggleTheme} />
   }
 
   return (
     <Auth
-      mode={authMode}
-      onAuth={authMode === 'admin' ? handleAdminAuth : handleUserAuth}
+      onAuth={handleAuth}
       onBack={() => setView('home')}
     />
   )

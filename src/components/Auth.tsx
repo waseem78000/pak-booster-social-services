@@ -165,11 +165,19 @@ export default function Auth({ onAuth, mode = 'user', onSwitchMode, onBack }: Au
               </Button>
             </form>
 
-            {onSwitchMode && (
+            {onSwitchMode && mode !== 'admin' && (
               <div className="mt-4 text-center">
                 <button onClick={onSwitchMode} className="text-emerald-300 hover:text-white text-sm underline transition-colors">
-                  {mode === 'admin' ? 'Switch to User Login' : 'Switch to Admin Login'}
+                  Switch to Admin Login
                 </button>
+              </div>
+            )}
+            {mode === 'admin' && (
+              <div className="mt-4 text-center">
+                <div className="flex items-center justify-center gap-2 text-amber-400/80 text-xs">
+                  <Lock className="w-3 h-3" />
+                  <span>Admin access only — unauthorized attempts are logged</span>
+                </div>
               </div>
             )}
           </CardContent>

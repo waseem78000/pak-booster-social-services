@@ -204,14 +204,32 @@ app.post('/auth/change-password', authMiddleware, async (c) => {
 })
 
 // --- ADMIN AUTH ---
+const loginAttempts: Record<string, { count: number; lastAttempt: number }> = {}
+const MAX_ATTEMPTS = 5
+const LOCKOUT_MS = 15 * 60 * 1000
+
 app.post('/admin/login', async (c) => {
   try {
     const { username, password } = await c.req.json()
+    const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown'
+    const key = `${ip}:${username}`
+    const attempts = loginAttempts[key]
+    if (attempts && attempts.count >= MAX_ATTEMPTS && Date.now() - attempts.lastAttempt < LOCKOUT_MS) {
+      const remaining = Math.ceil((LOCKOUT_MS - (Date.now() - attempts.lastAttempt)) / 60000)
+      return c.json({ error: `Too many failed attempts. Try again in ${remaining} minutes.` }, 429)
+    }
     const admin = await prisma.adminUser.findFirst({ where: { username } })
-    if (!admin) return c.json({ error: 'Invalid credentials' }, 401)
+    if (!admin) {
+      loginAttempts[key] = { count: (attempts?.count || 0) + 1, lastAttempt: Date.now() }
+      return c.json({ error: 'Invalid credentials' }, 401)
+    }
     const valid = await bcrypt.compare(password, admin.passwordHash)
-    if (!valid) return c.json({ error: 'Invalid credentials' }, 401)
-    const token = jwt.sign({ adminId: admin.id, isAdmin: true }, JWT_SECRET, { expiresIn: '7d' })
+    if (!valid) {
+      loginAttempts[key] = { count: (attempts?.count || 0) + 1, lastAttempt: Date.now() }
+      return c.json({ error: 'Invalid credentials' }, 401)
+    }
+    delete loginAttempts[key]
+    const token = jwt.sign({ adminId: admin.id, isAdmin: true }, JWT_SECRET, { expiresIn: '30d' })
     return c.json({ token, admin: { id: admin.id, username: admin.username, email: admin.email, role: admin.role } })
   } catch (e: any) { return c.json({ error: e.message || 'Login failed' }, 500) }
 })

@@ -48,9 +48,13 @@ export default function App() {
   useEffect(() => {
     const token = localStorage.getItem('smm_token')
     const adminToken = localStorage.getItem('smm_admin_token')
+    const params = new URLSearchParams(window.location.search)
+    const adminAccess = params.get('panel') === 'admin'
+
     if (adminToken) {
       api.adminMe().then(d => { setAdmin(d.admin); setPage('admin-dashboard') }).catch(() => {
         localStorage.removeItem('smm_admin_token')
+        if (adminAccess) goToAuth('admin')
       }).finally(() => setLoading(false))
     } else if (token) {
       api.getMe().then(d => setUser(d.user)).catch(() => {
@@ -58,6 +62,7 @@ export default function App() {
       }).finally(() => setLoading(false))
     } else {
       setLoading(false)
+      if (adminAccess) goToAuth('admin')
     }
   }, [])
 
@@ -84,6 +89,11 @@ export default function App() {
   const goToAuth = (mode: 'user' | 'admin') => {
     setAuthMode(mode)
     setView('auth')
+    if (mode === 'admin') {
+      window.history.replaceState({}, '', '?panel=admin')
+    } else {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
   }
 
   const t = isDark ? theme.dark : theme.light
@@ -148,7 +158,6 @@ export default function App() {
     <Auth
       mode={authMode}
       onAuth={authMode === 'admin' ? handleAdminAuth : handleUserAuth}
-      onSwitchMode={() => setAuthMode(authMode === 'admin' ? 'user' : 'admin')}
       onBack={() => setView('home')}
     />
   )

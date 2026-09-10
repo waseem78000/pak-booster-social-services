@@ -3,12 +3,6 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "installCommand": "bun install",
-  "functions": {
-    "api/index.ts": {
-      "maxDuration": 30,
-      "runtime": "@vercel/node"
-    }
-  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" }
   ]

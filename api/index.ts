@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { createClient } from '@libsql/client'
+import crypto from 'crypto'
 
 let db: any = null
 
 function getDb() {
   if (db) return db
-  const { createClient } = require('@libsql/client')
   db = createClient({
     url: process.env.DATABASE_URL!,
     authToken: process.env.TURSO_AUTH_TOKEN!,
@@ -47,7 +48,6 @@ function setCors(res: VercelResponse) {
 function makeToken(payload: any) {
   const h = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
   const b = Buffer.from(JSON.stringify(payload)).toString('base64url')
-  const crypto = require('crypto')
   const s = crypto.createHmac('sha256', process.env.JWT_SECRET || 'pak-booster-secret-2026').update(`${h}.${b}`).digest('base64url')
   return `${h}.${b}.${s}`
 }

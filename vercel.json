@@ -5,11 +5,10 @@
   "installCommand": "bun install",
   "functions": {
     "api/index.ts": {
-      "maxDuration": 30,
-      "runtime": "@vercel/node"
+      "maxDuration": 30
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" }
+    { "source": "/api/:path*", "destination": "/api" }
   ]
 }

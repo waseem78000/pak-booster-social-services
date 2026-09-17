@@ -698,6 +698,89 @@ export default async function handler(req: Request): Promise<Response> {
       })
     }
 
+    // Admin Me (verify admin token)
+    if (path === '/admin/me' && method === 'GET') {
+      const decoded = verifyAuth(req)
+      if (!decoded?.isAdmin) return json({ error: 'Admin access required' }, 403)
+      const admins = await query('SELECT id, username, email, role FROM admin_users WHERE id = ?', [decoded.adminId])
+      if (admins.length === 0) return json({ error: 'Admin not found' }, 404)
+      return json({ admin: admins[0], isAdmin: true })
+    }
+
+    // Admin Seed (ensure admin + data exists)
+    if (path === '/admin/seed' && method === 'POST') {
+      await seedIfNeeded()
+      return json({ success: true, message: 'Seeding completed' })
+    }
+
+    // Admin Support Ticket Reply
+    if (path.startsWith('/admin/support-tickets/') && path.endsWith('/reply') && method === 'POST') {
+      const decoded = verifyAuth(req)
+      if (!decoded?.isAdmin) return json({ error: 'Admin access required' }, 403)
+      const id = path.split('/')[3]
+      const body = await req.json()
+      await execute('UPDATE support_tickets SET reply = ?, status = ?, updated_at = datetime(\"now\") WHERE id = ?', [body.reply, body.status || 'replied', id])
+      const tickets = await query('SELECT user_id, subject FROM support_tickets WHERE id = ?', [id])
+      if (tickets.length > 0) {
+        const t = tickets[0] as any
+        await execute('INSERT INTO notifications (id, user_id, title, message, type, read_status, created_at) VALUES (?, ?, \"Support Reply\", ?, \"info\", 0, datetime(\"now\"))', [genId(), t.user_id, `Admin replied to your ticket: ${t.subject}`])
+      }
+      return json({ success: true })
+    }
+
+    // Admin Backup Import
+    if (path === '/admin/backup/import' && method === 'POST') {
+      const decoded = verifyAuth(req)
+      if (!decoded?.isAdmin) return json({ error: 'Admin access required' }, 403)
+      const body = await req.json()
+      return json({ success: true, message: 'Backup import not supported on Turso standalone' })
+    }
+
+    // Get Single User (admin)
+    if (path.startsWith('/admin/users/') && path !== '/admin/users' && !path.includes('adjust-balance') && method === 'GET') {
+      const decoded = verifyAuth(req)
+      if (!decoded?.isAdmin) return json({ error: 'Admin access required' }, 403)
+      const id = path.split('/')[3]
+      const users = await query('SELECT id, email, username, name, wallet_balance, status, created_at FROM users WHERE id = ?', [id])
+      if (users.length === 0) return json({ error: 'User not found' }, 404)
+      return json({ user: users[0] })
+    }
+
+    // Update User (admin)
+    if (path.startsWith('/admin/users/') && path !== '/admin/users' && !path.includes('adjust-balance') && method === 'PUT') {
+      const decoded = verifyAuth(req)
+      if (!decoded?.isAdmin) return json({ error: 'Admin access required' }, 403)
+      const id = path.split('/')[3]
+      const body = await req.json()
+      const sets: string[] = []
+      const args: any[] = []
+      if (body.status) { sets.push('status = ?'); args.push(body.status) }
+      if (body.name) { sets.push('name = ?'); args.push(body.name) }
+      if (sets.length > 0) { args.push(id); await execute(`UPDATE users SET ${sets.join(', ')}, updated_at = datetime(\"now\") WHERE id = ?`, args) }
+      return json({ success: true })
+    }
+
+    // User Plans - create (purchase plan)
+    if (path === '/user-plans' && method === 'POST') {
+      const decoded = verifyAuth(req)
+      if (!decoded || decoded.isAdmin) return json({ error: 'Unauthorized' }, 401)
+      const body = await req.json()
+      const plans = await query('SELECT * FROM plans WHERE id = ? AND status = \"active\"', [body.planId])
+      if (plans.length === 0) return json({ error: 'Plan not found' }, 404)
+      const plan = plans[0] as any
+      const users = await query('SELECT * FROM users WHERE id = ?', [decoded.userId])
+      if (users.length === 0) return json({ error: 'User not found' }, 404)
+      const user = users[0] as any
+      if (user.wallet_balance < plan.price) return json({ error: 'Insufficient balance' }, 400)
+      const newBalance = user.wallet_balance - plan.price
+      await execute('UPDATE users SET wallet_balance = ?, updated_at = datetime(\"now\") WHERE id = ?', [newBalance, decoded.userId])
+      const id = genId()
+      const expiresAt = new Date(Date.now() + plan.duration * 24 * 60 * 60 * 1000).toISOString()
+      await execute('INSERT INTO user_plans (id, user_id, plan_id, status, expires_at, created_at) VALUES (?, ?, ?, \"active\", ?, datetime(\"now\"))', [id, decoded.userId, body.planId, expiresAt])
+      await execute('INSERT INTO wallet_transactions (id, user_id, type, amount, previous_balance, new_balance, description, status, created_at) VALUES (?, ?, \"debit\", ?, ?, ?, ?, \"completed\", datetime(\"now\"))', [genId(), decoded.userId, plan.price, user.wallet_balance, newBalance, `Purchased plan: ${plan.name}`])
+      return json({ userPlan: { id, planId: body.planId, status: 'active' }, balanceAfter: newBalance })
+    }
+
     // 404
     return json({ error: 'Not found', path }, 404)
 
